@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ghenkins</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg-base:       #0a0a0a;
+  --bg-surface:    #111111;
+  --bg-elevated:   #1a1a1a;
+  --bg-selected:   #17222e;
+  --border:        #222222;
+  --border-subtle: #181818;
+  --text-primary:  #f0f0f0;
+  --text-secondary:#888888;
+  --text-muted:    #444444;
+  --text-mono:     #d4d4d4;
+  --status-queued:      #ca8a04;
+  --status-queued-bg:   #1c1500;
+  --status-running:     #3b82f6;
+  --status-running-bg:  #0a1628;
+  --status-success:     #22c55e;
+  --status-success-bg:  #071a0f;
+  --status-failure:     #ef4444;
+  --status-failure-bg:  #1c0606;
+  --status-error:       #f97316;
+  --status-error-bg:    #1c0900;
+  --status-canceled:    #6b7280;
+  --status-canceled-bg: #111111;
+  --accent: #3b82f6;
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-primary);
+  background: var(--bg-base);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+* { scrollbar-width: thin; scrollbar-color: #333 transparent; }
+
+/* Header */
+.app-header {
+  height: 44px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.logo {
+  font-weight: 600;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  user-select: none;
+}
+
+.logo-mark {
+  color: var(--accent);
+  font-size: 16px;
+  line-height: 1;
+}
+
+.live-indicator {
+  font-size: 11px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  user-select: none;
+}
+
+.live-indicator .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--status-success);
+}
+
+.live-indicator.active .dot {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+/* Body */
+.app-body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* Sidebar */
+.sidebar {
+  width: 280px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-surface);
+  border-right: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.sidebar-header {
+  padding: 10px 14px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.run-list {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.run-list-empty {
+  padding: 24px 14px;
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+/* Run items */
+.run-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border-subtle);
+  cursor: pointer;
+  transition: background 100ms;
+  border-left: 2px solid transparent;
+}
+
+.run-item:hover { background: var(--bg-elevated); }
+.run-item.selected {
+  background: var(--bg-selected);
+  border-left-color: var(--accent);
+  padding-left: 12px;
+}
+
+.run-item .row1 {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.run-item .row1 .watch-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.run-item .row1 .workflow-name {
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  flex-shrink: 1;
+}
+
+.run-item .row2 {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.run-item .repo-name {
+  font-size: 11px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.run-item .sha {
+  font-family: ui-monospace, "Menlo", "Monaco", monospace;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.run-item .row3 {
+  font-size: 11px;
+  color: var(--text-muted);
+  display: flex;
+  gap: 6px;
+}
+
+/* Badges */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.badge::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+.badge.running::before { animation: pulse 1.5s ease-in-out infinite; }
+
+.badge.queued   { color: var(--status-queued);   background: var(--status-queued-bg); }
+.badge.running  { color: var(--status-running);  background: var(--status-running-bg); }
+.badge.success  { color: var(--status-success);  background: var(--status-success-bg); }
+.badge.failure  { color: var(--status-failure);  background: var(--status-failure-bg); }
+.badge.error    { color: var(--status-error);    background: var(--status-error-bg); }
+.badge.canceled { color: var(--status-canceled); background: var(--status-canceled-bg); }
+
+/* Detail panel */
+.detail {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg-base);
+}
+
+.detail-header {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-surface);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-shrink: 0;
+}
+
+.detail-header.hidden { display: none; }
+
+.detail-header .left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.detail-header .title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.detail-header .title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.detail-header .meta {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 3px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.detail-header .meta .sha-mono {
+  font-family: ui-monospace, "Menlo", "Monaco", monospace;
+  color: var(--text-muted);
+}
+
+.detail-header .meta .sep {
+  color: var(--text-muted);
+}
+
+.detail-header .right {
+  flex-shrink: 0;
+  text-align: right;
+}
+
+.detail-header .duration {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Log area */
+.log-wrapper {
+  position: relative;
+  flex: 1;
+  overflow: hidden;
+  background: var(--bg-base);
+}
+
+.log-output {
+  height: 100%;
+  overflow-y: auto;
+  padding: 16px 20px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  font-family: "Berkeley Mono", "JetBrains Mono", "Fira Code", "Cascadia Code", ui-monospace, "Menlo", "Monaco", "Courier New", monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-mono);
+}
+
+.tail-indicator {
+  position: absolute;
+  bottom: 14px;
+  right: 16px;
+  padding: 4px 10px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: none;
+  user-select: none;
+  z-index: 10;
+}
+.tail-indicator.visible { display: block; }
+
+/* Empty state */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: 13px;
+  text-align: center;
+}
+
+.empty-state .empty-logo {
+  font-size: 24px;
+  color: var(--accent);
+  margin-bottom: 4px;
+}
+
+.empty-state .empty-title {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+/* Animations */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.3; }
+}
+
+@keyframes fadein {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.run-item.new { animation: fadein 300ms ease forwards; }
+
+/* Responsive: sidebar overlay on small screens */
+@media (max-width: 900px) {
+  .sidebar {
+    position: absolute;
+    top: 44px;
+    left: 0;
+    bottom: 0;
+    z-index: 100;
+    transform: translateX(-100%);
+    transition: transform 200ms ease;
+  }
+  .sidebar.open {
+    transform: translateX(0);
+  }
+  .back-btn {
+    display: flex !important;
+  }
+}
+
+.back-btn {
+  display: none;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 2px 0;
+  user-select: none;
+}
+
+.back-btn:hover { color: var(--text-primary); }
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <div class="logo">
+    <span class="logo-mark">&#9632;</span>
+    ghenkins
+  </div>
+  <div class="live-indicator" id="liveIndicator">
+    <div class="dot"></div>
+    live
+  </div>
+</header>
+
+<div class="app-body">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">Runs</div>
+    <div class="run-list" id="runList">
+      <div class="run-list-empty">Loading&hellip;</div>
+    </div>
+  </aside>
+
+  <main class="detail" id="detail">
+    <div class="detail-header hidden" id="detailHeader">
+      <div class="left">
+        <div class="title-row">
+          <span class="back-btn" id="backBtn" onclick="closeSidebar()">&#8592; Runs</span>
+          <span class="badge" id="detailBadge"></span>
+          <span class="detail-title title" id="detailTitle"></span>
+        </div>
+        <div class="meta" id="detailMeta"></div>
+      </div>
+      <div class="right">
+        <div class="duration" id="detailDuration"></div>
+      </div>
+    </div>
+
+    <div class="log-wrapper" id="logWrapper">
+      <div class="log-output" id="logOutput"></div>
+      <div class="tail-indicator" id="tailIndicator" onclick="resumeTail()">&#8593; scrolled up &middot; click to resume</div>
+      <div class="empty-state" id="emptyState">
+        <div class="empty-logo">&#9632;</div>
+        <div class="empty-title">ghenkins</div>
+        <div>No runs yet. Trigger a workflow<br>to see logs here.</div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+'use strict';
+
+// ─── State ───────────────────────────────────────────────────────────────────
+
+let runs = [];              // current run list (newest first)
+let selectedId = null;      // currently selected run ID
+let tailEnabled = true;     // auto-scroll to bottom
+let activeReader = null;    // current ReadableStream reader (abort on select)
+let durationTimers = [];    // setInterval handles for live durations
+let pollController = null;  // for pausing polling while tab hidden
+
+// ─── Formatting ──────────────────────────────────────────────────────────────
+
+function formatDuration(run) {
+  const start = new Date(run.started_at);
+  const end = run.finished_at ? new Date(run.finished_at) : new Date();
+  const secs = Math.max(0, Math.floor((end - start) / 1000));
+  if (secs < 60) return secs + 's';
+  const m = Math.floor(secs / 60), s = secs % 60;
+  if (m < 60) return m + 'm ' + s + 's';
+  const h = Math.floor(m / 60), mm = m % 60;
+  return h + 'h ' + mm + 'm';
+}
+
+function formatAge(run) {
+  const diff = Date.now() - new Date(run.started_at).getTime();
+  const secs = Math.floor(diff / 1000);
+  if (secs < 10) return 'just now';
+  if (secs < 60) return secs + 's ago';
+  const m = Math.floor(secs / 60);
+  if (m < 60) return m + 'm ago';
+  const h = Math.floor(m / 60);
+  if (h < 24) return h + 'h ago';
+  const d = Math.floor(h / 24);
+  return d + 'd ago';
+}
+
+function shortRepo(repo) {
+  // Strip protocol + host if present: "https://github.com/owner/repo" → "owner/repo"
+  return repo.replace(/^https?:\/\/[^/]+\//, '');
+}
+
+function isTerminal(status) {
+  return status === 'success' || status === 'failure' || status === 'error' || status === 'canceled';
+}
+
+// ─── Badge ───────────────────────────────────────────────────────────────────
+
+function makeBadgeEl(status) {
+  const el = document.createElement('span');
+  el.className = 'badge ' + status;
+  el.textContent = status;
+  return el;
+}
+
+function setBadge(el, status) {
+  el.className = 'badge ' + status;
+  el.textContent = status;
+}
+
+// ─── Run List ────────────────────────────────────────────────────────────────
+
+function renderRunItem(run) {
+  const el = document.createElement('div');
+  el.className = 'run-item';
+  el.dataset.id = run.id;
+  el.addEventListener('click', () => selectRun(run.id));
+  updateRunItemContent(el, run);
+  return el;
+}
+
+function updateRunItemContent(el, run) {
+  el.innerHTML = `
+    <div class="row1">
+      <span class="watch-name">${esc(run.watch_name)}</span>
+      <span class="workflow-name">${esc(run.workflow_name)}</span>
+    </div>
+    <div class="row2">
+      <span class="repo-name">${esc(shortRepo(run.repo))}</span>
+      <span class="sha">${esc(run.sha.slice(0, 7))}</span>
+      ${makeBadgeEl(run.status).outerHTML}
+    </div>
+    <div class="row3">
+      <span class="dur-${esc(run.id)}">${formatDuration(run)}</span>
+      <span>&middot;</span>
+      <span>${formatAge(run)}</span>
+    </div>
+  `;
+}
+
+function reconcileRunList(newRuns) {
+  runs = newRuns;
+  const listEl = document.getElementById('runList');
+
+  if (newRuns.length === 0) {
+    listEl.innerHTML = '<div class="run-list-empty">No runs yet.</div>';
+    return;
+  }
+
+  const existingIds = new Set();
+  listEl.querySelectorAll('.run-item').forEach(el => existingIds.add(el.dataset.id));
+
+  const newIds = new Set(newRuns.map(r => r.id));
+
+  // Insert new items at top
+  for (let i = newRuns.length - 1; i >= 0; i--) {
+    const run = newRuns[i];
+    if (!existingIds.has(run.id)) {
+      const el = renderRunItem(run);
+      el.classList.add('new');
+      // Insert before existing first item, or append
+      const first = listEl.querySelector('.run-item');
+      if (first) {
+        listEl.insertBefore(el, first);
+      } else {
+        listEl.appendChild(el);
+      }
+      // Remove animation class after it completes
+      el.addEventListener('animationend', () => el.classList.remove('new'), { once: true });
+    }
+  }
+
+  // Update existing items in-place (status badge, duration)
+  listEl.querySelectorAll('.run-item').forEach(el => {
+    const id = el.dataset.id;
+    if (!newIds.has(id)) {
+      el.remove();
+      return;
+    }
+    const run = newRuns.find(r => r.id === id);
+    if (!run) return;
+
+    // Update badge in-place
+    const badge = el.querySelector('.badge');
+    if (badge && badge.className !== 'badge ' + run.status) {
+      setBadge(badge, run.status);
+    }
+
+    // Update duration
+    const durEl = el.querySelector('.dur-' + id.replace(/[^a-zA-Z0-9_-]/g, '_'));
+    if (durEl) durEl.textContent = formatDuration(run);
+
+    // Update selection highlight
+    if (id === selectedId) {
+      el.classList.add('selected');
+    } else {
+      el.classList.remove('selected');
+    }
+  });
+}
+
+// ─── Selection ───────────────────────────────────────────────────────────────
+
+async function selectRun(id) {
+  if (selectedId === id) return;
+
+  // Abort active stream
+  if (activeReader) {
+    try { activeReader.cancel(); } catch (_) {}
+    activeReader = null;
+  }
+
+  selectedId = id;
+  tailEnabled = true;
+
+  // Update sidebar highlights
+  document.querySelectorAll('.run-item').forEach(el => {
+    el.classList.toggle('selected', el.dataset.id === id);
+  });
+
+  const run = runs.find(r => r.id === id);
+  if (!run) return;
+
+  // Show detail header
+  updateDetailHeader(run);
+
+  // Clear log
+  const logEl = document.getElementById('logOutput');
+  logEl.textContent = '';
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('tailIndicator').classList.remove('visible');
+
+  // On mobile, close sidebar
+  closeSidebar();
+
+  // Start streaming
+  streamLog(id, logEl);
+}
+
+function updateDetailHeader(run) {
+  const header = document.getElementById('detailHeader');
+  header.classList.remove('hidden');
+
+  setBadge(document.getElementById('detailBadge'), run.status);
+
+  document.getElementById('detailTitle').textContent =
+    run.watch_name + ' / ' + run.workflow_name;
+
+  const metaEl = document.getElementById('detailMeta');
+  metaEl.innerHTML =
+    `<span>${esc(shortRepo(run.repo))}</span>` +
+    `<span class="sep">@</span>` +
+    `<span class="sha-mono">${esc(run.sha.slice(0, 7))}</span>` +
+    `<span class="sep">&middot;</span>` +
+    `<span>started ${formatAge(run)}</span>`;
+
+  document.getElementById('detailDuration').textContent = formatDuration(run);
+}
+
+// ─── Log Streaming ───────────────────────────────────────────────────────────
+
+async function streamLog(runId, logEl) {
+  let resp;
+  try {
+    resp = await fetch('/runs/' + runId + '/log');
+  } catch (e) {
+    logEl.textContent = 'Failed to load log: ' + e.message;
+    return;
+  }
+
+  if (!resp.ok) {
+    logEl.textContent = 'Log not available (HTTP ' + resp.status + ')';
+    return;
+  }
+
+  const reader = resp.body.getReader();
+  activeReader = reader;
+  const decoder = new TextDecoder();
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      // Only append if this is still the active stream for this run
+      if (selectedId !== runId) break;
+      logEl.textContent += decoder.decode(value, { stream: true });
+      if (tailEnabled) {
+        logEl.scrollTop = logEl.scrollHeight;
+      }
+    }
+  } catch (_) {
+    // Stream cancelled or errored — normal when switching runs
+  } finally {
+    activeReader = null;
+  }
+
+  // Stream closed — run has finished; refresh metadata
+  if (selectedId === runId) {
+    refreshSelectedRun(runId);
+  }
+}
+
+async function refreshSelectedRun(id) {
+  try {
+    const run = await fetch('/runs/' + id).then(r => r.json());
+    // Update in local list
+    const idx = runs.findIndex(r => r.id === id);
+    if (idx !== -1) runs[idx] = run;
+    updateDetailHeader(run);
+    // Update list item too
+    const itemEl = document.querySelector('.run-item[data-id="' + id + '"]');
+    if (itemEl) updateRunItemContent(itemEl, run);
+  } catch (_) {}
+}
+
+// ─── Auto-refresh ─────────────────────────────────────────────────────────────
+
+async function pollRuns() {
+  try {
+    const data = await fetch('/runs').then(r => r.json());
+    reconcileRunList(data);
+
+    // Auto-select first run on initial load
+    if (selectedId === null && data.length > 0) {
+      selectRun(data[0].id);
+    }
+
+    // Show live indicator
+    const li = document.getElementById('liveIndicator');
+    li.classList.add('active');
+  } catch (_) {
+    document.getElementById('liveIndicator').classList.remove('active');
+  }
+}
+
+// Start polling
+pollRuns();
+setInterval(pollRuns, 5000);
+
+// Also refresh selected run metadata every 5s if still active
+setInterval(async () => {
+  if (!selectedId) return;
+  const run = runs.find(r => r.id === selectedId);
+  if (!run || isTerminal(run.status)) return;
+  await refreshSelectedRun(selectedId);
+  // Update duration display in detail header
+  const dr = runs.find(r => r.id === selectedId);
+  if (dr) document.getElementById('detailDuration').textContent = formatDuration(dr);
+}, 5000);
+
+// Live duration ticking for active runs in sidebar
+setInterval(() => {
+  document.querySelectorAll('.run-item').forEach(el => {
+    const id = el.dataset.id;
+    const run = runs.find(r => r.id === id);
+    if (!run || isTerminal(run.status)) return;
+    const durClass = 'dur-' + id.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const durEl = el.querySelector('.' + durClass);
+    if (durEl) durEl.textContent = formatDuration(run);
+  });
+  // Also tick detail header duration
+  if (selectedId) {
+    const run = runs.find(r => r.id === selectedId);
+    if (run && !isTerminal(run.status)) {
+      document.getElementById('detailDuration').textContent = formatDuration(run);
+    }
+  }
+}, 1000);
+
+// ─── Tail toggle ─────────────────────────────────────────────────────────────
+
+const logEl = document.getElementById('logOutput');
+logEl.addEventListener('scroll', () => {
+  const atBottom = logEl.scrollHeight - logEl.scrollTop - logEl.clientHeight < 40;
+  if (atBottom) {
+    tailEnabled = true;
+    document.getElementById('tailIndicator').classList.remove('visible');
+  } else {
+    tailEnabled = false;
+    // Only show indicator if a run is active
+    if (selectedId) {
+      const run = runs.find(r => r.id === selectedId);
+      if (run && !isTerminal(run.status)) {
+        document.getElementById('tailIndicator').classList.add('visible');
+      }
+    }
+  }
+});
+
+function resumeTail() {
+  tailEnabled = true;
+  document.getElementById('tailIndicator').classList.remove('visible');
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+// ─── Keyboard navigation ──────────────────────────────────────────────────────
+
+document.addEventListener('keydown', e => {
+  if (document.activeElement !== document.body) return;
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+
+  const listEl = document.getElementById('runList');
+  const items = Array.from(listEl.querySelectorAll('.run-item'));
+  if (items.length === 0) return;
+
+  const currentIdx = items.findIndex(el => el.dataset.id === selectedId);
+
+  switch (e.key) {
+    case 'j': {
+      e.preventDefault();
+      const next = currentIdx < items.length - 1 ? currentIdx + 1 : currentIdx;
+      if (next !== currentIdx) selectRun(items[next].dataset.id);
+      items[next].scrollIntoView({ block: 'nearest' });
+      break;
+    }
+    case 'k': {
+      e.preventDefault();
+      const prev = currentIdx > 0 ? currentIdx - 1 : 0;
+      if (prev !== currentIdx) selectRun(items[prev].dataset.id);
+      items[prev].scrollIntoView({ block: 'nearest' });
+      break;
+    }
+    case 'g': {
+      e.preventDefault();
+      selectRun(items[0].dataset.id);
+      listEl.scrollTop = 0;
+      break;
+    }
+    case 'G': {
+      e.preventDefault();
+      selectRun(items[items.length - 1].dataset.id);
+      listEl.scrollTop = listEl.scrollHeight;
+      break;
+    }
+    case 't': {
+      e.preventDefault();
+      tailEnabled = !tailEnabled;
+      const ind = document.getElementById('tailIndicator');
+      if (tailEnabled) {
+        ind.classList.remove('visible');
+        logEl.scrollTop = logEl.scrollHeight;
+      } else {
+        if (selectedId) {
+          const run = runs.find(r => r.id === selectedId);
+          if (run && !isTerminal(run.status)) ind.classList.add('visible');
+        }
+      }
+      break;
+    }
+  }
+});
+
+// ─── Responsive sidebar ───────────────────────────────────────────────────────
+
+function closeSidebar() {
+  if (window.innerWidth <= 900) {
+    document.getElementById('sidebar').classList.remove('open');
+  }
+}
+
+document.getElementById('backBtn').addEventListener('click', () => {
+  document.getElementById('sidebar').classList.add('open');
+});
+
+// ─── Utils ────────────────────────────────────────────────────────────────────
+
+function esc(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+</script>
+</body>
+</html>
