@@ -1,0 +1,31 @@
+[Unit]
+Description=ghenkins CI daemon
+After=network-online.target
+Wants=network-online.target
+# Podman socket must be running:
+#   systemctl --user enable --now podman.socket
+Wants=podman.socket
+After=podman.socket
+
+[Service]
+Type=simple
+ExecStartPre=-/usr/bin/podman rm -f ghenkins
+ExecStart=/usr/bin/podman run --rm --name ghenkins \
+  -v %h/.config/ghenkins:/home/ghenkins/.config/ghenkins:z \
+  -v %h/.cache/ghenkins:/home/ghenkins/.cache/ghenkins:z \
+  -v %h/.local/share/ghenkins:/home/ghenkins/.local/share/ghenkins:z \
+  -v %t/podman/podman.sock:/run/podman/podman.sock:z \
+  -e GHENKINS_LOG_LEVEL=info \
+  -e HOME=/home/ghenkins \
+  -e XDG_RUNTIME_DIR=/run \
+  --network=host \
+  localhost/ghenkins:latest serve
+ExecStop=/usr/bin/podman stop ghenkins
+Restart=on-failure
+RestartSec=5s
+
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target

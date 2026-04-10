@@ -2,10 +2,12 @@ package secrets
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 
-	"github.com/99designs/keyring"
 	"github.com/drone/envsubst"
 )
 
@@ -17,63 +19,86 @@ type Store interface {
 	List(ctx context.Context, service string) ([]string, error)
 }
 
-// KeyringStore wraps 99designs/keyring using the OS keychain.
-// Service name convention: "ghenkins/{watch-name}"
-type KeyringStore struct {
-	appName string
+// FileStore stores secrets as JSON files under a base directory.
+// Path: {baseDir}/{service}/{key}.json
+type FileStore struct {
+	baseDir string
 }
 
-// New creates a KeyringStore for the given application name.
-func New(appName string) (*KeyringStore, error) {
-	return &KeyringStore{appName: appName}, nil
-}
-
-func (ks *KeyringStore) open(service string) (keyring.Keyring, error) {
-	return keyring.Open(keyring.Config{
-		ServiceName: fmt.Sprintf("%s/%s", ks.appName, service),
-	})
-}
-
-func (ks *KeyringStore) Set(ctx context.Context, service, key, value string) error {
-	kr, err := ks.open(service)
-	if err != nil {
-		return err
-	}
-	return kr.Set(keyring.Item{Key: key, Data: []byte(value)})
-}
-
-func (ks *KeyringStore) Get(ctx context.Context, service, key string) (string, error) {
-	kr, err := ks.open(service)
-	if err != nil {
-		return "", err
-	}
-	item, err := kr.Get(key)
-	if err != nil {
-		return "", err
-	}
-	return string(item.Data), nil
-}
-
-func (ks *KeyringStore) Delete(ctx context.Context, service, key string) error {
-	kr, err := ks.open(service)
-	if err != nil {
-		return err
-	}
-	return kr.Remove(key)
-}
-
-func (ks *KeyringStore) List(ctx context.Context, service string) ([]string, error) {
-	kr, err := ks.open(service)
+// New creates a FileStore rooted at ~/.local/share/{appName}/secrets.
+func New(appName string) (*FileStore, error) {
+	base, err := os.UserHomeDir()
 	if err != nil {
 		return nil, err
 	}
-	return kr.Keys()
+	dir := filepath.Join(base, ".local", "share", appName, "secrets")
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		return nil, err
+	}
+	return &FileStore{baseDir: dir}, nil
+}
+
+func (fs *FileStore) path(service, key string) string {
+	return filepath.Join(fs.baseDir, filepath.Clean(service), key+".json")
+}
+
+func (fs *FileStore) Set(_ context.Context, service, key, value string) error {
+	dir := filepath.Join(fs.baseDir, filepath.Clean(service))
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		return err
+	}
+	data, err := json.Marshal(value)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(fs.path(service, key), data, 0600)
+}
+
+func (fs *FileStore) Get(_ context.Context, service, key string) (string, error) {
+	data, err := os.ReadFile(fs.path(service, key))
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", fmt.Errorf("secret %q not found in service %q", key, service)
+		}
+		return "", err
+	}
+	var value string
+	if err := json.Unmarshal(data, &value); err != nil {
+		return "", err
+	}
+	return value, nil
+}
+
+func (fs *FileStore) Delete(_ context.Context, service, key string) error {
+	err := os.Remove(fs.path(service, key))
+	if os.IsNotExist(err) {
+		return nil
+	}
+	return err
+}
+
+func (fs *FileStore) List(_ context.Context, service string) ([]string, error) {
+	dir := filepath.Join(fs.baseDir, filepath.Clean(service))
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	var keys []string
+	for _, e := range entries {
+		if !e.IsDir() && strings.HasSuffix(e.Name(), ".json") {
+			keys = append(keys, strings.TrimSuffix(e.Name(), ".json"))
+		}
+	}
+	return keys, nil
 }
 
 // ResolveSecrets resolves a map[string]string where values may be:
 //   - Literal string → returned as-is
 //   - "${ENV_VAR}" or "${ENV_VAR:-default}" → expanded via envsubst
-//   - "keyring:{watch-name}:{key}" → fetched from keyring
+//   - "keyring:{watch-name}:{key}" → fetched from store (uses FileStore)
 func ResolveSecrets(ctx context.Context, raw map[string]string, ks Store) (map[string]string, error) {
 	result := make(map[string]string, len(raw))
 	for k, v := range raw {
