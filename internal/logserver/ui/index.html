@@ -478,29 +478,6 @@ select.form-input {
   font-weight: 500;
 }
 
-/* ── Run detail layout ── */
-.run-detail-wrap {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  overflow: hidden;
-}
-.run-detail-header {
-  flex-shrink: 0;
-  padding: 16px 20px;
-  background: var(--bg-surface);
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-.run-detail-header-left { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.run-detail-header-right { flex-shrink: 0; text-align: right; }
-.run-detail-meta { font-size: 12px; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.sha-mono { font-family: ui-monospace, monospace; color: var(--accent); text-decoration: none; }
-.sha-mono:hover { text-decoration: underline; }
-
 /* ── Job graph ── */
 .job-graph-container {
   flex-shrink: 0;
@@ -665,6 +642,98 @@ select.form-input {
 /* ── Misc ── */
 .sep { color: var(--text-muted); }
 .mono { font-family: ui-monospace, monospace; }
+
+/* ── Run detail ── */
+.run-detail-wrap {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+.run-detail-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 20px 12px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
+}
+.run-detail-header-left { flex: 1; min-width: 0; }
+.run-detail-header-right { flex-shrink: 0; display: flex; align-items: flex-start; }
+.run-detail-title-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+.run-detail-name { font-size: 15px; font-weight: 700; }
+.run-detail-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 0;
+}
+.run-meta-item { display: flex; align-items: center; gap: 5px; }
+.run-meta-label { color: var(--text-muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
+.sha-mono { font-family: ui-monospace, monospace; color: var(--accent); text-decoration: none; }
+.sha-mono:hover { text-decoration: underline; }
+
+/* ── Jobs panel ── */
+.jobs-panel {
+  flex-shrink: 0;
+  padding: 12px 20px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--border);
+}
+.job-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  cursor: default;
+}
+.job-chip.running  { border-color: var(--status-running);  background: var(--status-running-bg); }
+.job-chip.success  { border-color: var(--status-success);  background: var(--status-success-bg); }
+.job-chip.failure  { border-color: var(--status-failure);  background: var(--status-failure-bg); }
+.job-chip.skipped  { border-color: var(--border);          color: var(--text-muted); }
+.job-chip.pending  { border-color: var(--status-queued);   background: var(--status-queued-bg); }
+.job-chip-name { color: inherit; }
+.job-chip-dur  { color: var(--text-muted); font-size: 11px; }
+
+/* ── Interrupted banner ── */
+.run-interrupted-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: var(--status-error-bg);
+  border-bottom: 1px solid var(--status-error);
+  font-size: 12px;
+  color: var(--status-error);
+  flex-shrink: 0;
+}
+
+/* ── Log footer ── */
+.log-footer {
+  flex-shrink: 0;
+  padding: 6px 20px;
+  font-size: 11px;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.log-footer.failure { color: var(--status-failure); border-top-color: var(--status-failure); }
+.log-footer.success { color: var(--status-success); border-top-color: var(--status-success); }
 
 @keyframes pulse   { 0%,100%{opacity:1} 50%{opacity:0.3} }
 @keyframes fadein  { from{opacity:0;transform:translateY(-4px)} to{opacity:1;transform:none} }
@@ -1860,20 +1929,22 @@ async function showRunDetail(projectName, runId) {
           <div class="breadcrumb" style="margin-bottom:6px">
             <a href="#" onclick="navigate('#projects/${esc(projectName)}');return false">${esc(projectName)}</a>
             <span class="breadcrumb-sep">/</span>
-            <span id="runDetailTitle">Loading...</span>
+            <span class="run-detail-name" id="runDetailTitle">Loading...</span>
             <span id="runDetailBadge"></span>
           </div>
           <div class="run-detail-meta" id="runDetailMeta"></div>
         </div>
         <div class="run-detail-header-right" id="runDetailRight"></div>
       </div>
-      <div class="job-graph-container" id="jobGraphContainer">
-        <div id="jobGraphInner"></div>
+      <div class="jobs-panel" id="jobsPanel" style="display:none"></div>
+      <div class="run-interrupted-banner" id="runInterruptedBanner" style="display:none">
+        &#9888; This run was interrupted before completing &mdash; the daemon was restarted or a deploy occurred.
       </div>
       <div class="log-pane">
         <div class="log-output" id="logOutput">Loading log...</div>
         <div class="tail-indicator" id="tailIndicator" onclick="resumeTail()">&#8593; scrolled up &middot; click to resume</div>
       </div>
+      <div class="log-footer" id="logFooter" style="display:none"></div>
     </div>
   `;
 
@@ -1888,7 +1959,7 @@ async function showRunDetail(projectName, runId) {
   updateRunDetailHeader(run);
   setupLogScroll();
   startLogStream(runId);
-  loadJobGraph(run);
+  loadJobChips(run);
 
   if (!isTerminal(run.status)) {
     pollTimer = setInterval(async () => {
@@ -1904,35 +1975,86 @@ async function showRunDetail(projectName, runId) {
   }
 }
 
+function formatAbsTime(dt) {
+  if (!dt) return '—';
+  const d = new Date(dt);
+  return d.toLocaleString(undefined, {
+    month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit',
+  });
+}
+
 function updateRunDetailHeader(run) {
-  const titleEl = document.getElementById('runDetailTitle');
-  const badgeEl = document.getElementById('runDetailBadge');
-  const metaEl  = document.getElementById('runDetailMeta');
-  const rightEl = document.getElementById('runDetailRight');
+  const titleEl   = document.getElementById('runDetailTitle');
+  const badgeEl   = document.getElementById('runDetailBadge');
+  const metaEl    = document.getElementById('runDetailMeta');
+  const rightEl   = document.getElementById('runDetailRight');
+  const bannerEl  = document.getElementById('runInterruptedBanner');
+  const footerEl  = document.getElementById('logFooter');
   if (!titleEl) return;
 
   const sha7 = (run.sha || '').slice(0, 7);
   const repoShort = shortRepo(run.repo);
   const ghUrl = 'https://github.com/' + repoShort + '/commit/' + run.sha;
+  const terminal = isTerminal(run.status);
 
   titleEl.textContent = run.workflow_name + ' #' + (run.id || '').slice(0, 8);
   if (badgeEl) badgeEl.innerHTML = ' ' + badgeHtml(run.status);
+
   if (metaEl) {
+    const dur = formatDuration(run);
+    const started = formatAbsTime(run.started_at);
+    const ago = formatAge(run.started_at);
     metaEl.innerHTML = `
-      <span>${esc(repoShort)}</span>
-      <span class="sep">@</span>
-      <a class="sha-mono" href="${esc(ghUrl)}" target="_blank" rel="noopener">${esc(sha7)}</a>
-      <span class="sep">&middot;</span>
-      <span>started ${esc(formatAge(run.started_at))}</span>
-      <span class="sep">&middot;</span>
-      <span id="runDetailDuration">${esc(formatDuration(run))}</span>
+      <span class="run-meta-item">
+        <span class="run-meta-label">repo</span>
+        <a class="sha-mono" href="${esc(ghUrl)}" target="_blank" rel="noopener"
+           title="${esc(run.sha)}">${esc(repoShort)}@${esc(sha7)}</a>
+      </span>
+      <span class="run-meta-item">
+        <span class="run-meta-label">started</span>
+        <span title="${esc(ago)}">${esc(started)}</span>
+      </span>
+      <span class="run-meta-item">
+        <span class="run-meta-label">duration</span>
+        <span id="runDetailDuration">${esc(dur)}</span>
+      </span>
+      ${run.watch_name ? `<span class="run-meta-item"><span class="run-meta-label">project</span><span>${esc(run.watch_name)}</span></span>` : ''}
+      ${run.exit_code != null ? `<span class="run-meta-item"><span class="run-meta-label">exit</span><span>${esc(String(run.exit_code))}</span></span>` : ''}
     `;
   }
+
+  if (bannerEl) {
+    bannerEl.style.display = run.status === 'error' ? '' : 'none';
+  }
+
+  if (footerEl && terminal) {
+    footerEl.style.display = '';
+    if (run.status === 'success') {
+      footerEl.className = 'log-footer success';
+      footerEl.innerHTML = '&#10003; Run completed successfully' +
+        (run.finished_at ? ' &middot; finished ' + esc(formatAbsTime(run.finished_at)) : '');
+    } else if (run.status === 'failure') {
+      footerEl.className = 'log-footer failure';
+      footerEl.innerHTML = '&#10007; Run failed' +
+        (run.exit_code != null ? ' with exit code ' + esc(String(run.exit_code)) : '') +
+        (run.finished_at ? ' &middot; finished ' + esc(formatAbsTime(run.finished_at)) : '');
+    } else if (run.status === 'canceled') {
+      footerEl.className = 'log-footer';
+      footerEl.innerHTML = '&#9632; Run was canceled' +
+        (run.finished_at ? ' &middot; ' + esc(formatAbsTime(run.finished_at)) : '');
+    } else if (run.status === 'error') {
+      footerEl.className = 'log-footer';
+      footerEl.style.color = 'var(--status-error)';
+      footerEl.innerHTML = '&#9888; Run ended abnormally (interrupted)';
+    }
+  } else if (footerEl) {
+    footerEl.style.display = 'none';
+  }
+
   if (rightEl) {
-    const cancelBtn = !isTerminal(run.status)
+    rightEl.innerHTML = !terminal
       ? `<button class="btn btn-sm btn-danger" onclick="cancelRun('${esc(run.id)}')">&#10005; Cancel</button>`
       : '';
-    rightEl.innerHTML = cancelBtn;
   }
 }
 
@@ -2258,10 +2380,40 @@ function stopJobGraphPolling() {
   if (jobGraphTimer) { clearInterval(jobGraphTimer); jobGraphTimer = null; }
 }
 
-async function loadJobGraph(run) {
+function statusDotIcon(status) {
+  const icons = {
+    success: '&#10003;', failure: '&#10007;', running: '&#9679;',
+    error: '&#9888;', canceled: '&#9632;', pending: '&#9675;', queued: '&#8987;', skipped: '&#8943;',
+  };
+  return icons[status] || '&#9675;';
+}
+
+function renderJobChips(panelEl, jobsData, workflowJobs) {
+  panelEl.innerHTML = '';
+  let jobNames = [];
+  if (workflowJobs && Object.keys(workflowJobs).length > 0) {
+    jobNames = Object.keys(workflowJobs);
+  } else if (jobsData && jobsData.length > 0) {
+    jobNames = jobsData.map(j => j.job_name);
+  }
+  if (jobNames.length === 0) { panelEl.style.display = 'none'; return; }
+
+  panelEl.style.display = '';
+  jobNames.forEach(name => {
+    const jobData = jobsData ? jobsData.find(j => j.job_name === name) : null;
+    const status = jobData ? jobData.status : 'pending';
+    const dur = jobData ? formatJobDuration(jobData) : '';
+    const chip = document.createElement('div');
+    chip.className = 'job-chip ' + status;
+    chip.innerHTML = `<span>${statusDotIcon(status)}</span><span class="job-chip-name">${esc(name)}</span>${dur ? `<span class="job-chip-dur">${esc(dur)}</span>` : ''}`;
+    panelEl.appendChild(chip);
+  });
+}
+
+async function loadJobChips(run) {
   if (!run) return;
-  const container = document.getElementById('jobGraphContainer');
-  if (!container) return;
+  const panelEl = document.getElementById('jobsPanel');
+  if (!panelEl) return;
 
   let jobsData = [], workflowJobs = null;
   try {
@@ -2278,11 +2430,7 @@ async function loadJobGraph(run) {
 
   _lastJobsData = jobsData;
   _lastWorkflowJobs = workflowJobs;
-
-  if (jobsData.length > 0 || (workflowJobs && Object.keys(workflowJobs).length > 0)) {
-    container.classList.add('visible');
-    renderJobGraph('jobGraphInner', jobsData, workflowJobs);
-  }
+  renderJobChips(panelEl, jobsData, workflowJobs);
 
   if (!isTerminal(run.status)) {
     jobGraphTimer = setInterval(async () => {
@@ -2290,7 +2438,7 @@ async function loadJobGraph(run) {
         const res = await fetch('/runs/' + run.id + '/jobs');
         if (res.ok) {
           _lastJobsData = await res.json();
-          renderJobGraph('jobGraphInner', _lastJobsData, _lastWorkflowJobs);
+          renderJobChips(panelEl, _lastJobsData, _lastWorkflowJobs);
         }
       } catch (_) {}
     }, 3000);
