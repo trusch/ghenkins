@@ -4,6 +4,17 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>ghenkins</title>
+<!-- CodeMirror 5 -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/codemirror.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/addon/fold/foldgutter.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/theme/material-darker.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/mode/yaml/yaml.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/addon/fold/foldcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/addon/fold/foldgutter.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/addon/fold/indent-fold.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/addon/edit/matchbrackets.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/addon/selection/active-line.min.js"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -539,7 +550,20 @@ select.form-input {
 }
 .tail-indicator.visible { display: block; }
 
-/* ── YAML editor ── */
+/* ── CodeMirror overrides ── */
+.CodeMirror {
+  height: 420px;
+  font-size: 13px;
+  font-family: "Berkeley Mono","JetBrains Mono","Fira Code",ui-monospace,monospace;
+  border-radius: 4px;
+  line-height: 1.6;
+}
+.CodeMirror-scroll { min-height: 120px; }
+.CodeMirror-gutters { border-right: 1px solid #2a2a2a; background: #212121; }
+.CodeMirror-foldgutter { width: 14px; }
+.CodeMirror-foldmarker { color: var(--accent); cursor: pointer; }
+
+/* ── YAML editor (legacy textarea — kept for graceful fallback) ── */
 .yaml-editor {
   width: 100%;
   min-height: 400px;
@@ -1458,7 +1482,7 @@ function renderWorkflowCard(projectName, wf) {
             <button class="btn btn-sm" onclick="document.getElementById('${esc(yamlPanelId)}').classList.add('hidden')">Close</button>
           </div>
         </div>
-        <textarea class="yaml-editor" id="${esc(yamlPanelId)}_editor" placeholder="Loading YAML..."></textarea>
+        <div class="yaml-editor-cm" id="${esc(yamlPanelId)}_cm"></div>
       </div>
     </div>
   `;
@@ -1693,6 +1717,34 @@ async function triggerWorkflow(projectName, wfName) {
   }
 }
 
+// panelId → CodeMirror instance
+const _yamlEditors = {};
+
+function _getOrCreateCM(panelId) {
+  if (_yamlEditors[panelId]) return _yamlEditors[panelId];
+  const host = document.getElementById(panelId + '_cm');
+  if (!host) return null;
+  const cm = CodeMirror(host, {
+    mode: 'yaml',
+    theme: 'material-darker',
+    lineNumbers: true,
+    foldGutter: true,
+    gutters: ['CodeMirror-linenumbers', 'CodeMirror-foldgutter'],
+    styleActiveLine: true,
+    matchBrackets: true,
+    lineWrapping: false,
+    tabSize: 2,
+    indentWithTabs: false,
+    extraKeys: {
+      'Ctrl-/': cm => cm.execCommand('toggleComment'),
+      'Cmd-/':  cm => cm.execCommand('toggleComment'),
+    },
+    foldOptions: { widget: '\u22ef', minFoldSize: 2 },
+  });
+  _yamlEditors[panelId] = cm;
+  return cm;
+}
+
 async function toggleYamlPanel(projectName, wfName, panelId) {
   const panel = document.getElementById(panelId);
   if (!panel) return;
@@ -1701,9 +1753,10 @@ async function toggleYamlPanel(projectName, wfName, panelId) {
     return;
   }
   panel.classList.remove('hidden');
-  // Use querySelector on the panel itself — avoids any ID-mismatch issues.
-  const editor = panel.querySelector('textarea.yaml-editor');
-  if (editor) editor.value = 'Loading\u2026';
+
+  const cm = _getOrCreateCM(panelId);
+  if (cm) { cm.setValue('Loading\u2026'); cm.refresh(); }
+
   try {
     const res = await fetch(
       '/api/projects/' + encodeURIComponent(projectName) + '/workflows/' + encodeURIComponent(wfName) + '/content',
@@ -1715,28 +1768,29 @@ async function toggleYamlPanel(projectName, wfName, panelId) {
       throw new Error(detail);
     }
     const text = await res.text();
-    if (editor) { editor.value = text || ''; editor.focus(); }
+    if (cm) { cm.setValue(text || ''); cm.refresh(); cm.focus(); }
   } catch (e) {
-    if (editor) editor.value = 'Error: ' + e.message;
+    if (cm) cm.setValue('# Error loading file: ' + e.message);
   }
 }
 
 async function saveYamlPanel(projectName, wfName, panelId) {
   const panel = document.getElementById(panelId);
   if (!panel) return;
-  const editor  = panel.querySelector('textarea.yaml-editor');
+  const cm = _yamlEditors[panelId];
   const statusEl = panel.querySelector('.yaml-status');
-  if (!editor || !statusEl) return;
+  if (!cm || !statusEl) return;
   statusEl.textContent = 'Saving\u2026';
   statusEl.className = 'yaml-status';
   try {
     const res = await fetch(
       '/api/projects/' + encodeURIComponent(projectName) + '/workflows/' + encodeURIComponent(wfName) + '/content',
-      { method: 'PUT', headers: {'Content-Type':'text/plain'}, body: editor.value, credentials: 'same-origin' }
+      { method: 'PUT', headers: {'Content-Type':'text/plain'}, body: cm.getValue(), credentials: 'same-origin' }
     );
     if (!res.ok) { const d = await res.json().catch(()=>({})); throw new Error(d.error || 'HTTP ' + res.status); }
     statusEl.textContent = 'Saved.';
     statusEl.className = 'yaml-status ok';
+    setTimeout(() => { statusEl.textContent = ''; }, 3000);
   } catch (e) {
     statusEl.textContent = 'Error: ' + e.message;
     statusEl.className = 'yaml-status err';

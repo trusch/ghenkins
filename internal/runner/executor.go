@@ -172,6 +172,17 @@ func (r *podmanJobRunner) RunJob(ctx context.Context, jobID string, job *Job, wf
 		BindMount{HostPath: goBuildCache, ContainerPath: "/root/.cache/go/build"},
 	)
 
+	// Persist apt package archives and lists so apt-get install is faster on
+	// subsequent runs (packages are already downloaded; only dpkg runs again).
+	aptArchives := filepath.Join(r.cacheDir, "apt", "archives")
+	aptLists := filepath.Join(r.cacheDir, "apt", "lists")
+	_ = os.MkdirAll(aptArchives, 0o755)
+	_ = os.MkdirAll(aptLists, 0o755)
+	extraBinds = append(extraBinds,
+		BindMount{HostPath: aptArchives, ContainerPath: "/var/cache/apt/archives"},
+		BindMount{HostPath: aptLists, ContainerPath: "/var/lib/apt/lists"},
+	)
+
 	// 10. Create + start container
 	containerName := fmt.Sprintf("ghenkins-%s-%d", sanitizeName(jobID), time.Now().UnixNano())
 	container, err := CreateContainer(r.conn, ContainerConfig{
