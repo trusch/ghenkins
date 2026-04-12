@@ -131,7 +131,82 @@ func New(cfg *config.Config, log zerolog.Logger) (*Daemon, error) {
 	}, nil
 }
 
+func (d *Daemon) seedWatchesFromConfig(ctx context.Context) error {
+	watches, err := d.store.ListWatches(ctx)
+	if err != nil {
+		return err
+	}
+	if len(watches) > 0 {
+		return nil
+	}
+	for _, w := range d.cfg.Watches {
+		dbw := configWatchToDBWatch(w)
+		if err := d.store.CreateWatch(ctx, dbw); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func configWatchToDBWatch(w config.Watch) *store.DBWatch {
+	dbw := &store.DBWatch{
+		Name:     w.Name,
+		Repo:     w.Repo,
+		Branch:   w.Branch,
+		PR:       w.PR,
+		OnEvents: w.On,
+	}
+	if len(dbw.OnEvents) == 0 {
+		dbw.OnEvents = []string{"push"}
+	}
+	for _, wf := range w.Workflows {
+		dbw.Workflows = append(dbw.Workflows, &store.DBWorkflow{
+			WatchName:   w.Name,
+			Name:        wf.Name,
+			Path:        wf.Path,
+			RunnerImage: wf.RunnerImage,
+			Secrets:     wf.Secrets,
+			Env:         wf.Env,
+		})
+	}
+	return dbw
+}
+
 func (d *Daemon) Run(ctx context.Context) error {
+	// 0. Seed watches from config if DB is empty.
+	if err := d.seedWatchesFromConfig(ctx); err != nil {
+		d.log.Error().Err(err).Msg("seed watches from config")
+	}
+
+	// Configure poller to load watches from DB each cycle.
+	d.poller.SetWatchProvider(func(ctx context.Context) ([]config.Watch, error) {
+		dbWatches, err := d.store.ListWatches(ctx)
+		if err != nil {
+			return nil, err
+		}
+		var watches []config.Watch
+		for _, dw := range dbWatches {
+			w := config.Watch{
+				Name:   dw.Name,
+				Repo:   dw.Repo,
+				Branch: dw.Branch,
+				PR:     dw.PR,
+				On:     dw.OnEvents,
+			}
+			for _, wf := range dw.Workflows {
+				w.Workflows = append(w.Workflows, config.WorkflowRef{
+					Name:        wf.Name,
+					Path:        wf.Path,
+					RunnerImage: wf.RunnerImage,
+					Secrets:     wf.Secrets,
+					Env:         wf.Env,
+				})
+			}
+			watches = append(watches, w)
+		}
+		return watches, nil
+	})
+
 	// 1. Start log server.
 	go d.logSrv.Run(ctx) //nolint:errcheck
 

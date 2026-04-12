@@ -28,6 +28,8 @@ type Job struct {
 	WorkflowRefs []config.WorkflowRef
 }
 
+type WatchProvider func(ctx context.Context) ([]config.Watch, error)
+
 type Poller struct {
 	cfg            *config.Config
 	ghClient       *github.Client
@@ -35,6 +37,7 @@ type Poller struct {
 	jobs           chan<- Job
 	log            zerolog.Logger
 	initialBackoff time.Duration
+	watchProvider  WatchProvider
 }
 
 func New(cfg *config.Config, gh *github.Client, st store.Store, jobs chan<- Job, log zerolog.Logger) *Poller {
@@ -48,6 +51,12 @@ func New(cfg *config.Config, gh *github.Client, st store.Store, jobs chan<- Job,
 	}
 }
 
+// SetWatchProvider sets a function that returns the current list of watches.
+// When set, this overrides cfg.Watches in Run().
+func (p *Poller) SetWatchProvider(fn WatchProvider) {
+	p.watchProvider = fn
+}
+
 // SetInitialBackoff overrides the starting backoff duration (default 5s). Useful in tests.
 func (p *Poller) SetInitialBackoff(d time.Duration) {
 	p.initialBackoff = d
@@ -55,8 +64,18 @@ func (p *Poller) SetInitialBackoff(d time.Duration) {
 
 // Run starts one goroutine per watch and blocks until ctx is cancelled.
 func (p *Poller) Run(ctx context.Context) error {
+	watches := p.cfg.Watches
+	if p.watchProvider != nil {
+		var err error
+		watches, err = p.watchProvider(ctx)
+		if err != nil {
+			p.log.Error().Err(err).Msg("failed to load watches from provider")
+			watches = p.cfg.Watches
+		}
+	}
+
 	var wg sync.WaitGroup
-	for _, w := range p.cfg.Watches {
+	for _, w := range watches {
 		wg.Add(1)
 		go func(w config.Watch) {
 			defer wg.Done()

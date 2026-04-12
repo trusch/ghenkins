@@ -81,6 +81,12 @@ body {
   line-height: 1;
 }
 
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .live-indicator {
   font-size: 11px;
   color: var(--text-muted);
@@ -100,6 +106,52 @@ body {
 .live-indicator.active .dot {
   animation: pulse 2s ease-in-out infinite;
 }
+
+.header-username {
+  font-size: 12px;
+  color: var(--text-secondary);
+  user-select: none;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  transition: background 100ms, color 100ms;
+  white-space: nowrap;
+}
+
+.btn:hover { background: #252525; }
+
+.btn-primary {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+.btn-primary:hover { background: #2563eb; border-color: #2563eb; }
+
+.btn-danger {
+  background: var(--bg-elevated);
+  color: var(--status-failure);
+  border-color: var(--border);
+}
+.btn-danger:hover { background: var(--status-failure-bg); }
+
+.btn-icon {
+  padding: 4px 8px;
+  font-size: 14px;
+  background: transparent;
+  border-color: transparent;
+}
+.btn-icon:hover { background: var(--bg-elevated); border-color: var(--border); }
 
 /* Body */
 .app-body {
@@ -429,22 +481,549 @@ body {
 }
 
 .back-btn:hover { color: var(--text-primary); }
+
+/* ── Full-screen pages (setup / login) ─────────────────────────────────────── */
+
+.fullpage {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-base);
+  z-index: 200;
+}
+
+.fullpage.hidden { display: none; }
+
+.auth-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 36px 40px;
+  width: 360px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.auth-card .auth-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.auth-card .auth-logo .logo-mark {
+  color: var(--accent);
+  font-size: 20px;
+}
+
+.auth-card .auth-subtitle {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-top: -10px;
+}
+
+.auth-card .field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.auth-card .field label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.form-input {
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  padding: 7px 10px;
+  border-radius: 4px;
+  width: 100%;
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 150ms;
+}
+
+.form-input:focus {
+  border-color: var(--accent);
+}
+
+.form-input::placeholder {
+  color: var(--text-muted);
+}
+
+.error-msg {
+  font-size: 12px;
+  color: var(--status-failure);
+  min-height: 18px;
+}
+
+/* ── Settings modal ─────────────────────────────────────────────────────────── */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow-y: auto;
+  padding: 60px 16px;
+}
+
+.modal-overlay.hidden { display: none; }
+
+.modal-panel {
+  background: var(--bg-surface);
+  width: 100%;
+  max-width: 700px;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  max-height: calc(100vh - 120px);
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.modal-header .modal-title {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.modal-body {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Tab bar */
+.tab-bar {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.tab-btn {
+  padding: 10px 16px;
+  font-size: 13px;
+  font-family: inherit;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  margin-bottom: -1px;
+  transition: color 100ms;
+}
+
+.tab-btn:hover { color: var(--text-primary); }
+
+.tab-btn.active {
+  color: var(--text-primary);
+  border-bottom-color: var(--accent);
+}
+
+.tab-pane {
+  display: none;
+  padding: 20px;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.tab-pane.active { display: flex; }
+
+/* ── Settings content ───────────────────────────────────────────────────────── */
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.section-title {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+/* Watch list */
+.watch-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.watch-card {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--bg-elevated);
+}
+
+.watch-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.watch-card-header:hover { background: rgba(255,255,255,0.03); }
+
+.watch-expand-icon {
+  font-size: 10px;
+  color: var(--text-muted);
+  transition: transform 150ms;
+  width: 12px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.watch-card.expanded .watch-expand-icon {
+  transform: rotate(90deg);
+}
+
+.watch-card-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.watch-card-name {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.watch-card-sub {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: 1px;
+}
+
+.watch-card-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.watch-card-body {
+  display: none;
+  border-top: 1px solid var(--border);
+  padding: 12px 14px;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.watch-card.expanded .watch-card-body { display: flex; }
+
+.wf-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.wf-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+}
+
+.wf-item-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.wf-item-name {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.wf-item-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: ui-monospace, "Menlo", "Monaco", monospace;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Inline form */
+.inline-form {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.inline-form.hidden { display: none; }
+
+.form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.form-row label {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.form-row-inline {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.form-row-inline .form-row {
+  flex: 1;
+}
+
+.radio-group {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 6px 0;
+}
+
+.radio-group label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.radio-group input[type=radio] {
+  accent-color: var(--accent);
+}
+
+.checkbox-group {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  padding: 4px 0;
+}
+
+.checkbox-group label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.checkbox-group input[type=checkbox] {
+  accent-color: var(--accent);
+}
+
+.kv-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.kv-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.kv-row .form-input {
+  flex: 1;
+}
+
+.kv-row .btn-remove {
+  flex-shrink: 0;
+  padding: 4px 7px;
+  font-size: 13px;
+  line-height: 1;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.kv-row .btn-remove:hover { color: var(--status-failure); border-color: var(--status-failure); }
+
+.form-section-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin-bottom: 2px;
+}
+
+.form-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  padding-top: 4px;
+}
+
+/* Users table */
+.users-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.users-table th {
+  text-align: left;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+}
+
+.users-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+}
+
+.users-table tr:last-child td { border-bottom: none; }
+
+.users-table .td-actions {
+  display: flex;
+  gap: 5px;
+  justify-content: flex-end;
+}
+
+.role-badge {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.role-badge.admin {
+  background: rgba(59,130,246,0.15);
+  color: var(--accent);
+}
+
+.role-badge.user {
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+}
+
+.empty-notice {
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 12px 0;
+  text-align: center;
+}
+
+select.form-input {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 28px;
+  cursor: pointer;
+}
 </style>
 </head>
 <body>
 
-<header class="app-header">
+<!-- ── Setup page ─────────────────────────────────────────────────────────── -->
+<div class="fullpage hidden" id="setupPage">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <span class="logo-mark">&#9632;</span>
+      ghenkins
+    </div>
+    <div class="auth-subtitle">Welcome. Create an admin account to get started.</div>
+    <div class="field">
+      <label for="setupUsername">Username</label>
+      <input class="form-input" type="text" id="setupUsername" autocomplete="username" placeholder="">
+    </div>
+    <div class="field">
+      <label for="setupPassword">Password</label>
+      <input class="form-input" type="password" id="setupPassword" autocomplete="new-password" placeholder="">
+    </div>
+    <div class="field">
+      <label for="setupConfirm">Confirm</label>
+      <input class="form-input" type="password" id="setupConfirm" autocomplete="new-password" placeholder="">
+    </div>
+    <button class="btn btn-primary" id="setupBtn" onclick="handleSetup()">Set up ghenkins</button>
+    <div class="error-msg" id="setupError"></div>
+  </div>
+</div>
+
+<!-- ── Login page ─────────────────────────────────────────────────────────── -->
+<div class="fullpage hidden" id="loginPage">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <span class="logo-mark">&#9632;</span>
+      ghenkins
+    </div>
+    <div class="field">
+      <label for="loginUsername">Username</label>
+      <input class="form-input" type="text" id="loginUsername" autocomplete="username" placeholder="">
+    </div>
+    <div class="field">
+      <label for="loginPassword">Password</label>
+      <input class="form-input" type="password" id="loginPassword" autocomplete="current-password" placeholder="">
+    </div>
+    <button class="btn btn-primary" id="loginBtn" onclick="handleLogin()">Log in</button>
+    <div class="error-msg" id="loginError"></div>
+  </div>
+</div>
+
+<!-- ── Main app ───────────────────────────────────────────────────────────── -->
+<header class="app-header" id="appHeader" style="display:none">
   <div class="logo">
     <span class="logo-mark">&#9632;</span>
     ghenkins
   </div>
-  <div class="live-indicator" id="liveIndicator">
-    <div class="dot"></div>
-    live
+  <div class="header-right">
+    <div class="live-indicator" id="liveIndicator">
+      <div class="dot"></div>
+      live
+    </div>
+    <span class="header-username" id="headerUsername"></span>
+    <button class="btn btn-icon" title="Settings" onclick="openSettings()">&#9881;</button>
+    <button class="btn" onclick="handleLogout()">Log out</button>
   </div>
 </header>
 
-<div class="app-body">
+<div class="app-body" id="appBody" style="display:none">
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">Runs</div>
     <div class="run-list" id="runList">
@@ -479,19 +1058,349 @@ body {
   </main>
 </div>
 
+<!-- ── Settings modal ─────────────────────────────────────────────────────── -->
+<div class="modal-overlay hidden" id="settingsOverlay" onclick="handleOverlayClick(event)">
+  <div class="modal-panel" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <span class="modal-title">Settings</span>
+      <button class="btn btn-icon" onclick="closeSettings()">&#10005;</button>
+    </div>
+    <div class="modal-body">
+      <div class="tab-bar" id="settingsTabBar">
+        <button class="tab-btn active" data-tab="watches" onclick="switchTab('watches')">Watches</button>
+        <button class="tab-btn" data-tab="users" onclick="switchTab('users')" id="usersTabBtn" style="display:none">Users</button>
+      </div>
+
+      <!-- Watches tab -->
+      <div class="tab-pane active" id="tab-watches">
+        <div class="section-header">
+          <span class="section-title">Watches</span>
+          <button class="btn btn-primary" onclick="showAddWatchForm()">+ Add watch</button>
+        </div>
+        <!-- Add/edit watch form -->
+        <div class="inline-form hidden" id="watchForm">
+          <div class="form-row-inline">
+            <div class="form-row">
+              <label>Name *</label>
+              <input class="form-input" type="text" id="wfName" placeholder="my-watch">
+            </div>
+            <div class="form-row">
+              <label>Repo *</label>
+              <input class="form-input" type="text" id="wfRepo" placeholder="owner/repo">
+            </div>
+          </div>
+          <div class="form-row">
+            <label>Trigger</label>
+            <div class="radio-group">
+              <label><input type="radio" name="wfTrigger" value="branch" checked onchange="updateTriggerFields()"> Branch</label>
+              <label><input type="radio" name="wfTrigger" value="pr" onchange="updateTriggerFields()"> PR number</label>
+            </div>
+          </div>
+          <div class="form-row" id="wfBranchRow">
+            <label>Branch</label>
+            <input class="form-input" type="text" id="wfBranch" placeholder="main">
+          </div>
+          <div class="form-row hidden" id="wfPrRow">
+            <label>PR number</label>
+            <input class="form-input" type="number" id="wfPr" placeholder="42">
+          </div>
+          <div class="form-row">
+            <label>Events</label>
+            <div class="checkbox-group">
+              <label><input type="checkbox" id="wfEventPush" checked> push</label>
+              <label><input type="checkbox" id="wfEventPR"> pull_request</label>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button class="btn" onclick="hideWatchForm()">Cancel</button>
+            <button class="btn btn-primary" id="watchFormSubmit" onclick="submitWatchForm()">Add watch</button>
+          </div>
+          <div class="error-msg" id="watchFormError"></div>
+        </div>
+
+        <div class="watch-list" id="watchList">
+          <div class="empty-notice">Loading&hellip;</div>
+        </div>
+      </div>
+
+      <!-- Users tab -->
+      <div class="tab-pane" id="tab-users">
+        <div class="section-header">
+          <span class="section-title">Users</span>
+          <button class="btn btn-primary" onclick="showAddUserForm()">+ Add user</button>
+        </div>
+        <!-- Add user form -->
+        <div class="inline-form hidden" id="userForm">
+          <div class="form-row-inline">
+            <div class="form-row">
+              <label>Username *</label>
+              <input class="form-input" type="text" id="ufUsername" autocomplete="off">
+            </div>
+            <div class="form-row">
+              <label>Password *</label>
+              <input class="form-input" type="password" id="ufPassword" autocomplete="new-password">
+            </div>
+            <div class="form-row" style="max-width:120px">
+              <label>Role</label>
+              <select class="form-input" id="ufRole">
+                <option value="user">user</option>
+                <option value="admin">admin</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button class="btn" onclick="hideUserForm()">Cancel</button>
+            <button class="btn btn-primary" onclick="submitUserForm()">Add user</button>
+          </div>
+          <div class="error-msg" id="userFormError"></div>
+        </div>
+
+        <div id="usersTableWrap">
+          <div class="empty-notice">Loading&hellip;</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Workflow add/edit modal (nested, reused) -->
+<div class="modal-overlay hidden" id="wfModalOverlay" onclick="handleWfOverlayClick(event)" style="z-index:110">
+  <div class="modal-panel" onclick="event.stopPropagation()" style="max-width:560px">
+    <div class="modal-header">
+      <span class="modal-title" id="wfModalTitle">Add workflow</span>
+      <button class="btn btn-icon" onclick="closeWfModal()">&#10005;</button>
+    </div>
+    <div class="modal-body">
+      <div style="padding:16px;display:flex;flex-direction:column;gap:12px">
+        <div class="form-row-inline">
+          <div class="form-row">
+            <label>Name *</label>
+            <input class="form-input" type="text" id="wfmName" placeholder="build">
+          </div>
+          <div class="form-row">
+            <label>Runner image</label>
+            <input class="form-input" type="text" id="wfmImage" placeholder="ubuntu:22.04">
+          </div>
+        </div>
+        <div class="form-row">
+          <label>Path *</label>
+          <input class="form-input" type="text" id="wfmPath" placeholder="/absolute/path/to/workflow.yaml">
+        </div>
+        <div>
+          <div class="form-section-label">Secrets</div>
+          <div class="kv-list" id="wfmSecrets"></div>
+          <button class="btn" style="margin-top:6px;font-size:11px" onclick="addKvRow('wfmSecrets')">+ Add secret</button>
+        </div>
+        <div>
+          <div class="form-section-label">Environment variables</div>
+          <div class="kv-list" id="wfmEnv"></div>
+          <button class="btn" style="margin-top:6px;font-size:11px" onclick="addKvRow('wfmEnv')">+ Add env var</button>
+        </div>
+        <div class="form-actions">
+          <button class="btn" onclick="closeWfModal()">Cancel</button>
+          <button class="btn btn-primary" id="wfModalSubmit" onclick="submitWfModal()">Add workflow</button>
+        </div>
+        <div class="error-msg" id="wfModalError"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 'use strict';
 
-// ─── State ───────────────────────────────────────────────────────────────────
+// ─── Global State ────────────────────────────────────────────────────────────
 
-let runs = [];              // current run list (newest first)
-let selectedId = null;      // currently selected run ID
-let tailEnabled = true;     // auto-scroll to bottom
-let activeReader = null;    // current ReadableStream reader (abort on select)
-let durationTimers = [];    // setInterval handles for live durations
-let pollController = null;  // for pausing polling while tab hidden
+let runs = [];
+let selectedId = null;
+let tailEnabled = true;
+let activeReader = null;
+let pollController = null;
+let pollIntervalId = null;
+let durationIntervalId = null;
+let metaIntervalId = null;
+let currentUser = null;
 
-// ─── Formatting ──────────────────────────────────────────────────────────────
+// Settings state
+let editingWatchName = null;  // null = adding, string = editing
+let editingWfContext = null;  // { watchName, wfName (null=adding) }
+let wfDataCache = {};         // "watchName\x00wfName" -> wf object
+
+// ─── Auth / Setup ────────────────────────────────────────────────────────────
+
+async function checkSetup() {
+  try {
+    const res = await fetch('/api/setup/status');
+    const data = await res.json();
+    if (data.needs_setup) {
+      showPage('setup');
+      return;
+    }
+  } catch (_) {
+    // If the endpoint fails, fall through to auth check
+  }
+  checkAuth();
+}
+
+async function checkAuth() {
+  try {
+    const res = await fetch('/api/me');
+    if (res.status === 401) {
+      showPage('login');
+      return;
+    }
+    if (!res.ok) {
+      showPage('login');
+      return;
+    }
+    currentUser = await res.json();
+    showMainApp();
+  } catch (_) {
+    showPage('login');
+  }
+}
+
+async function handleSetup() {
+  const username = document.getElementById('setupUsername').value.trim();
+  const password = document.getElementById('setupPassword').value;
+  const confirm  = document.getElementById('setupConfirm').value;
+  const errEl    = document.getElementById('setupError');
+
+  errEl.textContent = '';
+  if (!username) { errEl.textContent = 'Username is required.'; return; }
+  if (!password) { errEl.textContent = 'Password is required.'; return; }
+  if (password !== confirm) { errEl.textContent = 'Passwords do not match.'; return; }
+
+  document.getElementById('setupBtn').disabled = true;
+  try {
+    const res = await fetch('/api/setup', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ username, password }),
+    });
+    const data = await res.json();
+    if (!res.ok) { errEl.textContent = data.error || 'Setup failed.'; return; }
+    currentUser = data;
+    showMainApp();
+  } catch (e) {
+    errEl.textContent = 'Network error: ' + e.message;
+  } finally {
+    document.getElementById('setupBtn').disabled = false;
+  }
+}
+
+async function handleLogin() {
+  const username = document.getElementById('loginUsername').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const errEl    = document.getElementById('loginError');
+
+  errEl.textContent = '';
+  if (!username) { errEl.textContent = 'Username is required.'; return; }
+  if (!password) { errEl.textContent = 'Password is required.'; return; }
+
+  document.getElementById('loginBtn').disabled = true;
+  try {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ username, password }),
+    });
+    const data = await res.json();
+    if (!res.ok) { errEl.textContent = data.error || 'Login failed.'; return; }
+    currentUser = data;
+    showMainApp();
+  } catch (e) {
+    errEl.textContent = 'Network error: ' + e.message;
+  } finally {
+    document.getElementById('loginBtn').disabled = false;
+  }
+}
+
+async function handleLogout() {
+  try {
+    await fetch('/api/auth/logout', { method: 'POST' });
+  } catch (_) {}
+  stopPolling();
+  currentUser = null;
+  runs = [];
+  selectedId = null;
+  document.getElementById('runList').innerHTML = '<div class="run-list-empty">Loading&hellip;</div>';
+  document.getElementById('detailHeader').classList.add('hidden');
+  document.getElementById('logOutput').textContent = '';
+  document.getElementById('emptyState').style.display = '';
+  checkSetup();
+}
+
+// ─── Page routing ─────────────────────────────────────────────────────────────
+
+function showPage(page) {
+  document.getElementById('setupPage').classList.toggle('hidden', page !== 'setup');
+  document.getElementById('loginPage').classList.toggle('hidden', page !== 'login');
+  document.getElementById('appHeader').style.display = (page === 'main') ? '' : 'none';
+  document.getElementById('appBody').style.display   = (page === 'main') ? '' : 'none';
+
+  if (page === 'login') {
+    document.getElementById('loginUsername').value = '';
+    document.getElementById('loginPassword').value = '';
+    document.getElementById('loginError').textContent = '';
+    setTimeout(() => document.getElementById('loginUsername').focus(), 50);
+  } else if (page === 'setup') {
+    document.getElementById('setupUsername').value = '';
+    document.getElementById('setupPassword').value = '';
+    document.getElementById('setupConfirm').value  = '';
+    document.getElementById('setupError').textContent = '';
+    setTimeout(() => document.getElementById('setupUsername').focus(), 50);
+  }
+}
+
+function showMainApp() {
+  showPage('main');
+  document.getElementById('headerUsername').textContent = currentUser ? currentUser.username : '';
+  // Show Users tab for admins only
+  document.getElementById('usersTabBtn').style.display =
+    (currentUser && currentUser.role === 'admin') ? '' : 'none';
+  startPolling();
+  fetchRuns();
+}
+
+// ─── Polling ──────────────────────────────────────────────────────────────────
+
+function startPolling() {
+  stopPolling();
+  pollIntervalId = setInterval(fetchRuns, 5000);
+  metaIntervalId = setInterval(async () => {
+    if (!selectedId) return;
+    const run = runs.find(r => r.id === selectedId);
+    if (!run || isTerminal(run.status)) return;
+    await refreshSelectedRun(selectedId);
+    const dr = runs.find(r => r.id === selectedId);
+    if (dr) document.getElementById('detailDuration').textContent = formatDuration(dr);
+  }, 5000);
+  durationIntervalId = setInterval(() => {
+    document.querySelectorAll('.run-item').forEach(el => {
+      const id = el.dataset.id;
+      const run = runs.find(r => r.id === id);
+      if (!run || isTerminal(run.status)) return;
+      const durClass = 'dur-' + id.replace(/[^a-zA-Z0-9_-]/g, '_');
+      const durEl = el.querySelector('.' + durClass);
+      if (durEl) durEl.textContent = formatDuration(run);
+    });
+    if (selectedId) {
+      const run = runs.find(r => r.id === selectedId);
+      if (run && !isTerminal(run.status)) {
+        document.getElementById('detailDuration').textContent = formatDuration(run);
+      }
+    }
+  }, 1000);
+}
+
+function stopPolling() {
+  if (pollIntervalId)    { clearInterval(pollIntervalId);    pollIntervalId    = null; }
+  if (metaIntervalId)    { clearInterval(metaIntervalId);    metaIntervalId    = null; }
+  if (durationIntervalId){ clearInterval(durationIntervalId);durationIntervalId= null; }
+}
+
+// ─── Formatting ───────────────────────────────────────────────────────────────
 
 function formatDuration(run) {
   const start = new Date(run.started_at);
@@ -518,7 +1427,6 @@ function formatAge(run) {
 }
 
 function shortRepo(repo) {
-  // Strip protocol + host if present: "https://github.com/owner/repo" → "owner/repo"
   return repo.replace(/^https?:\/\/[^/]+\//, '');
 }
 
@@ -526,7 +1434,7 @@ function isTerminal(status) {
   return status === 'success' || status === 'failure' || status === 'error' || status === 'canceled';
 }
 
-// ─── Badge ───────────────────────────────────────────────────────────────────
+// ─── Badge ────────────────────────────────────────────────────────────────────
 
 function makeBadgeEl(status) {
   const el = document.createElement('span');
@@ -540,7 +1448,7 @@ function setBadge(el, status) {
   el.textContent = status;
 }
 
-// ─── Run List ────────────────────────────────────────────────────────────────
+// ─── Run List ─────────────────────────────────────────────────────────────────
 
 function renderRunItem(run) {
   const el = document.createElement('div');
@@ -584,59 +1492,44 @@ function reconcileRunList(newRuns) {
 
   const newIds = new Set(newRuns.map(r => r.id));
 
-  // Insert new items at top
   for (let i = newRuns.length - 1; i >= 0; i--) {
     const run = newRuns[i];
     if (!existingIds.has(run.id)) {
       const el = renderRunItem(run);
       el.classList.add('new');
-      // Insert before existing first item, or append
       const first = listEl.querySelector('.run-item');
       if (first) {
         listEl.insertBefore(el, first);
       } else {
         listEl.appendChild(el);
       }
-      // Remove animation class after it completes
       el.addEventListener('animationend', () => el.classList.remove('new'), { once: true });
     }
   }
 
-  // Update existing items in-place (status badge, duration)
   listEl.querySelectorAll('.run-item').forEach(el => {
     const id = el.dataset.id;
-    if (!newIds.has(id)) {
-      el.remove();
-      return;
-    }
+    if (!newIds.has(id)) { el.remove(); return; }
     const run = newRuns.find(r => r.id === id);
     if (!run) return;
 
-    // Update badge in-place
     const badge = el.querySelector('.badge');
     if (badge && badge.className !== 'badge ' + run.status) {
       setBadge(badge, run.status);
     }
 
-    // Update duration
     const durEl = el.querySelector('.dur-' + id.replace(/[^a-zA-Z0-9_-]/g, '_'));
     if (durEl) durEl.textContent = formatDuration(run);
 
-    // Update selection highlight
-    if (id === selectedId) {
-      el.classList.add('selected');
-    } else {
-      el.classList.remove('selected');
-    }
+    el.classList.toggle('selected', id === selectedId);
   });
 }
 
-// ─── Selection ───────────────────────────────────────────────────────────────
+// ─── Selection ────────────────────────────────────────────────────────────────
 
 async function selectRun(id) {
   if (selectedId === id) return;
 
-  // Abort active stream
   if (activeReader) {
     try { activeReader.cancel(); } catch (_) {}
     activeReader = null;
@@ -645,7 +1538,6 @@ async function selectRun(id) {
   selectedId = id;
   tailEnabled = true;
 
-  // Update sidebar highlights
   document.querySelectorAll('.run-item').forEach(el => {
     el.classList.toggle('selected', el.dataset.id === id);
   });
@@ -653,19 +1545,14 @@ async function selectRun(id) {
   const run = runs.find(r => r.id === id);
   if (!run) return;
 
-  // Show detail header
   updateDetailHeader(run);
 
-  // Clear log
   const logEl = document.getElementById('logOutput');
   logEl.textContent = '';
   document.getElementById('emptyState').style.display = 'none';
   document.getElementById('tailIndicator').classList.remove('visible');
 
-  // On mobile, close sidebar
   closeSidebar();
-
-  // Start streaming
   streamLog(id, logEl);
 }
 
@@ -674,7 +1561,6 @@ function updateDetailHeader(run) {
   header.classList.remove('hidden');
 
   setBadge(document.getElementById('detailBadge'), run.status);
-
   document.getElementById('detailTitle').textContent =
     run.watch_name + ' / ' + run.workflow_name;
 
@@ -689,7 +1575,7 @@ function updateDetailHeader(run) {
   document.getElementById('detailDuration').textContent = formatDuration(run);
 }
 
-// ─── Log Streaming ───────────────────────────────────────────────────────────
+// ─── Log Streaming ────────────────────────────────────────────────────────────
 
 async function streamLog(runId, logEl) {
   let resp;
@@ -713,7 +1599,6 @@ async function streamLog(runId, logEl) {
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
-      // Only append if this is still the active stream for this run
       if (selectedId !== runId) break;
       logEl.textContent += decoder.decode(value, { stream: true });
       if (tailEnabled) {
@@ -721,12 +1606,11 @@ async function streamLog(runId, logEl) {
       }
     }
   } catch (_) {
-    // Stream cancelled or errored — normal when switching runs
+    // Stream cancelled or errored
   } finally {
     activeReader = null;
   }
 
-  // Stream closed — run has finished; refresh metadata
   if (selectedId === runId) {
     refreshSelectedRun(runId);
   }
@@ -735,11 +1619,9 @@ async function streamLog(runId, logEl) {
 async function refreshSelectedRun(id) {
   try {
     const run = await fetch('/runs/' + id).then(r => r.json());
-    // Update in local list
     const idx = runs.findIndex(r => r.id === id);
     if (idx !== -1) runs[idx] = run;
     updateDetailHeader(run);
-    // Update list item too
     const itemEl = document.querySelector('.run-item[data-id="' + id + '"]');
     if (itemEl) updateRunItemContent(itemEl, run);
   } catch (_) {}
@@ -747,57 +1629,20 @@ async function refreshSelectedRun(id) {
 
 // ─── Auto-refresh ─────────────────────────────────────────────────────────────
 
-async function pollRuns() {
+async function fetchRuns() {
   try {
     const data = await fetch('/runs').then(r => r.json());
     reconcileRunList(data);
 
-    // Auto-select first run on initial load
     if (selectedId === null && data.length > 0) {
       selectRun(data[0].id);
     }
 
-    // Show live indicator
-    const li = document.getElementById('liveIndicator');
-    li.classList.add('active');
+    document.getElementById('liveIndicator').classList.add('active');
   } catch (_) {
     document.getElementById('liveIndicator').classList.remove('active');
   }
 }
-
-// Start polling
-pollRuns();
-setInterval(pollRuns, 5000);
-
-// Also refresh selected run metadata every 5s if still active
-setInterval(async () => {
-  if (!selectedId) return;
-  const run = runs.find(r => r.id === selectedId);
-  if (!run || isTerminal(run.status)) return;
-  await refreshSelectedRun(selectedId);
-  // Update duration display in detail header
-  const dr = runs.find(r => r.id === selectedId);
-  if (dr) document.getElementById('detailDuration').textContent = formatDuration(dr);
-}, 5000);
-
-// Live duration ticking for active runs in sidebar
-setInterval(() => {
-  document.querySelectorAll('.run-item').forEach(el => {
-    const id = el.dataset.id;
-    const run = runs.find(r => r.id === id);
-    if (!run || isTerminal(run.status)) return;
-    const durClass = 'dur-' + id.replace(/[^a-zA-Z0-9_-]/g, '_');
-    const durEl = el.querySelector('.' + durClass);
-    if (durEl) durEl.textContent = formatDuration(run);
-  });
-  // Also tick detail header duration
-  if (selectedId) {
-    const run = runs.find(r => r.id === selectedId);
-    if (run && !isTerminal(run.status)) {
-      document.getElementById('detailDuration').textContent = formatDuration(run);
-    }
-  }
-}, 1000);
 
 // ─── Tail toggle ─────────────────────────────────────────────────────────────
 
@@ -809,7 +1654,6 @@ logEl.addEventListener('scroll', () => {
     document.getElementById('tailIndicator').classList.remove('visible');
   } else {
     tailEnabled = false;
-    // Only show indicator if a run is active
     if (selectedId) {
       const run = runs.find(r => r.id === selectedId);
       if (run && !isTerminal(run.status)) {
@@ -828,8 +1672,21 @@ function resumeTail() {
 // ─── Keyboard navigation ──────────────────────────────────────────────────────
 
 document.addEventListener('keydown', e => {
-  if (document.activeElement !== document.body) return;
   if (e.metaKey || e.ctrlKey || e.altKey) return;
+
+  // Close modals on Escape regardless of focus
+  if (e.key === 'Escape') {
+    if (!document.getElementById('wfModalOverlay').classList.contains('hidden')) {
+      closeWfModal();
+      return;
+    }
+    if (!document.getElementById('settingsOverlay').classList.contains('hidden')) {
+      closeSettings();
+      return;
+    }
+  }
+
+  if (document.activeElement !== document.body) return;
 
   const listEl = document.getElementById('runList');
   const items = Array.from(listEl.querySelectorAll('.run-item'));
@@ -894,6 +1751,492 @@ document.getElementById('backBtn').addEventListener('click', () => {
   document.getElementById('sidebar').classList.add('open');
 });
 
+// ─── Settings modal ───────────────────────────────────────────────────────────
+
+function openSettings() {
+  document.getElementById('settingsOverlay').classList.remove('hidden');
+  switchTab('watches');
+  loadWatches();
+  if (currentUser && currentUser.role === 'admin') {
+    loadUsers();
+  }
+}
+
+function closeSettings() {
+  document.getElementById('settingsOverlay').classList.add('hidden');
+  hideWatchForm();
+}
+
+function handleOverlayClick(e) {
+  if (e.target === document.getElementById('settingsOverlay')) {
+    closeSettings();
+  }
+}
+
+function switchTab(tabName) {
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === tabName);
+  });
+  document.querySelectorAll('.tab-pane').forEach(pane => {
+    pane.classList.toggle('active', pane.id === 'tab-' + tabName);
+  });
+}
+
+// ─── Watches ──────────────────────────────────────────────────────────────────
+
+async function loadWatches() {
+  const listEl = document.getElementById('watchList');
+  listEl.innerHTML = '<div class="empty-notice">Loading&hellip;</div>';
+  try {
+    const res = await fetch('/api/watches');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const watches = await res.json();
+    renderWatchList(watches);
+  } catch (e) {
+    listEl.innerHTML = '<div class="empty-notice" style="color:var(--status-failure)">Failed to load watches: ' + esc(e.message) + '</div>';
+  }
+}
+
+function renderWatchList(watches) {
+  const listEl = document.getElementById('watchList');
+  wfDataCache = {};
+  if (!watches || watches.length === 0) {
+    listEl.innerHTML = '<div class="empty-notice">No watches configured.</div>';
+    return;
+  }
+  listEl.innerHTML = '';
+  watches.forEach(w => {
+    (w.workflows || []).forEach(wf => {
+      wfDataCache[w.name + '\x00' + wf.name] = wf;
+    });
+    listEl.appendChild(makeWatchCard(w));
+  });
+}
+
+function makeWatchCard(w) {
+  const card = document.createElement('div');
+  card.className = 'watch-card';
+  card.dataset.watchName = w.name;
+
+  const trigger = w.branch ? 'branch: ' + w.branch : (w.pr ? 'PR #' + w.pr : '');
+  const events = (w.on_events || []).join(', ');
+  const wfCount = (w.workflows || []).length;
+
+  card.innerHTML = `
+    <div class="watch-card-header" onclick="toggleWatchCard(this.closest('.watch-card'))">
+      <span class="watch-expand-icon">&#9654;</span>
+      <div class="watch-card-info">
+        <div class="watch-card-name">${esc(w.name)}</div>
+        <div class="watch-card-sub">${esc(w.repo)}${trigger ? ' &middot; ' + esc(trigger) : ''}${events ? ' &middot; ' + esc(events) : ''} &middot; ${wfCount} workflow${wfCount !== 1 ? 's' : ''}</div>
+      </div>
+      <div class="watch-card-actions" onclick="event.stopPropagation()">
+        <button class="btn btn-icon" title="Edit" onclick="showEditWatchForm('${esc(w.name)}')">&#9998;</button>
+        <button class="btn btn-icon btn-danger" title="Delete" onclick="deleteWatch('${esc(w.name)}')">&#10005;</button>
+      </div>
+    </div>
+    <div class="watch-card-body">
+      <div>
+        <div class="form-section-label" style="margin-bottom:6px">Workflows</div>
+        <div class="wf-list" id="wfl-${esc(w.name)}">
+          ${renderWorkflowItems(w)}
+        </div>
+        <button class="btn" style="margin-top:8px;font-size:11px" onclick="showAddWfModal('${esc(w.name)}')">+ Add workflow</button>
+      </div>
+    </div>
+  `;
+  return card;
+}
+
+function renderWorkflowItems(w) {
+  if (!w.workflows || w.workflows.length === 0) {
+    return '<div class="empty-notice" style="text-align:left;padding:4px 0">No workflows.</div>';
+  }
+  return w.workflows.map(wf => `
+    <div class="wf-item">
+      <div class="wf-item-info">
+        <div class="wf-item-name">${esc(wf.name)}</div>
+        <div class="wf-item-sub">${esc(wf.path)}${wf.runner_image ? ' &middot; ' + esc(wf.runner_image) : ''}</div>
+      </div>
+      <button class="btn btn-icon" title="Edit" onclick="showEditWfModalByName('${esc(w.name)}', '${esc(wf.name)}')">&#9998;</button>
+      <button class="btn btn-icon btn-danger" title="Delete" onclick="deleteWorkflow('${esc(w.name)}', '${esc(wf.name)}')">&#10005;</button>
+    </div>
+  `).join('');
+}
+
+function toggleWatchCard(card) {
+  card.classList.toggle('expanded');
+}
+
+// Watch form
+
+function showAddWatchForm() {
+  editingWatchName = null;
+  document.getElementById('wfName').value = '';
+  document.getElementById('wfRepo').value = '';
+  document.getElementById('wfBranch').value = '';
+  document.getElementById('wfPr').value = '';
+  document.getElementById('wfEventPush').checked = true;
+  document.getElementById('wfEventPR').checked = false;
+  document.querySelector('input[name="wfTrigger"][value="branch"]').checked = true;
+  updateTriggerFields();
+  document.getElementById('watchFormSubmit').textContent = 'Add watch';
+  document.getElementById('watchFormError').textContent = '';
+  document.getElementById('watchForm').classList.remove('hidden');
+  document.getElementById('wfName').focus();
+}
+
+function showEditWatchForm(name) {
+  // Find watch data
+  fetch('/api/watches').then(r => r.json()).then(watches => {
+    const w = watches.find(x => x.name === name);
+    if (!w) return;
+    editingWatchName = name;
+    document.getElementById('wfName').value = w.name;
+    document.getElementById('wfRepo').value = w.repo;
+    if (w.pr) {
+      document.querySelector('input[name="wfTrigger"][value="pr"]').checked = true;
+      document.getElementById('wfPr').value = w.pr;
+      document.getElementById('wfBranch').value = '';
+    } else {
+      document.querySelector('input[name="wfTrigger"][value="branch"]').checked = true;
+      document.getElementById('wfBranch').value = w.branch || '';
+      document.getElementById('wfPr').value = '';
+    }
+    updateTriggerFields();
+    const evts = w.on_events || [];
+    document.getElementById('wfEventPush').checked = evts.includes('push');
+    document.getElementById('wfEventPR').checked   = evts.includes('pull_request');
+    document.getElementById('watchFormSubmit').textContent = 'Save watch';
+    document.getElementById('watchFormError').textContent = '';
+    document.getElementById('watchForm').classList.remove('hidden');
+    document.getElementById('wfName').focus();
+  });
+}
+
+function hideWatchForm() {
+  document.getElementById('watchForm').classList.add('hidden');
+  editingWatchName = null;
+}
+
+function updateTriggerFields() {
+  const val = document.querySelector('input[name="wfTrigger"]:checked').value;
+  document.getElementById('wfBranchRow').classList.toggle('hidden', val !== 'branch');
+  document.getElementById('wfPrRow').classList.toggle('hidden', val !== 'pr');
+}
+
+async function submitWatchForm() {
+  const name   = document.getElementById('wfName').value.trim();
+  const repo   = document.getElementById('wfRepo').value.trim();
+  const trigger= document.querySelector('input[name="wfTrigger"]:checked').value;
+  const branch = document.getElementById('wfBranch').value.trim();
+  const pr     = parseInt(document.getElementById('wfPr').value, 10);
+  const errEl  = document.getElementById('watchFormError');
+
+  errEl.textContent = '';
+  if (!name) { errEl.textContent = 'Name is required.'; return; }
+  if (!repo)  { errEl.textContent = 'Repo is required.'; return; }
+
+  const events = [];
+  if (document.getElementById('wfEventPush').checked) events.push('push');
+  if (document.getElementById('wfEventPR').checked)   events.push('pull_request');
+
+  const body = { name, repo, on_events: events };
+  if (trigger === 'branch' && branch) body.branch = branch;
+  if (trigger === 'pr' && !isNaN(pr)) body.pr = pr;
+
+  const isEdit = editingWatchName !== null;
+  try {
+    const url = isEdit ? '/api/watches/' + encodeURIComponent(editingWatchName) : '/api/watches';
+    const res = await fetch(url, {
+      method: isEdit ? 'PUT' : 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (!res.ok) { errEl.textContent = data.error || 'Failed to save watch.'; return; }
+    hideWatchForm();
+    loadWatches();
+  } catch (e) {
+    errEl.textContent = 'Network error: ' + e.message;
+  }
+}
+
+async function deleteWatch(name) {
+  if (!confirm('Delete watch "' + name + '"? This cannot be undone.')) return;
+  try {
+    const res = await fetch('/api/watches/' + encodeURIComponent(name), { method: 'DELETE' });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      alert('Failed to delete: ' + (d.error || 'HTTP ' + res.status));
+      return;
+    }
+    loadWatches();
+  } catch (e) {
+    alert('Network error: ' + e.message);
+  }
+}
+
+// ─── Workflow modal ───────────────────────────────────────────────────────────
+
+function showAddWfModal(watchName) {
+  editingWfContext = { watchName, wfName: null };
+  document.getElementById('wfModalTitle').textContent = 'Add workflow';
+  document.getElementById('wfModalSubmit').textContent = 'Add workflow';
+  document.getElementById('wfmName').value  = '';
+  document.getElementById('wfmPath').value  = '';
+  document.getElementById('wfmImage').value = '';
+  document.getElementById('wfmSecrets').innerHTML = '';
+  document.getElementById('wfmEnv').innerHTML     = '';
+  document.getElementById('wfModalError').textContent = '';
+  document.getElementById('wfModalOverlay').classList.remove('hidden');
+  document.getElementById('wfmName').focus();
+}
+
+function showEditWfModalByName(watchName, wfName) {
+  const wf = wfDataCache[watchName + '\x00' + wfName] || {};
+  showEditWfModal(watchName, wfName, wf);
+}
+
+function showEditWfModal(watchName, wfName, wf) {
+  if (!wf) wf = {};
+
+  editingWfContext = { watchName, wfName };
+  document.getElementById('wfModalTitle').textContent = 'Edit workflow';
+  document.getElementById('wfModalSubmit').textContent = 'Save workflow';
+  document.getElementById('wfmName').value  = wf.name  || '';
+  document.getElementById('wfmPath').value  = wf.path  || '';
+  document.getElementById('wfmImage').value = wf.runner_image || '';
+  document.getElementById('wfModalError').textContent = '';
+
+  // Populate secrets
+  const secretsEl = document.getElementById('wfmSecrets');
+  secretsEl.innerHTML = '';
+  Object.entries(wf.secrets || {}).forEach(([k, v]) => addKvRow('wfmSecrets', k, v));
+
+  // Populate env
+  const envEl = document.getElementById('wfmEnv');
+  envEl.innerHTML = '';
+  Object.entries(wf.env || {}).forEach(([k, v]) => addKvRow('wfmEnv', k, v));
+
+  document.getElementById('wfModalOverlay').classList.remove('hidden');
+  document.getElementById('wfmName').focus();
+}
+
+function closeWfModal() {
+  document.getElementById('wfModalOverlay').classList.add('hidden');
+  editingWfContext = null;
+}
+
+function handleWfOverlayClick(e) {
+  if (e.target === document.getElementById('wfModalOverlay')) {
+    closeWfModal();
+  }
+}
+
+async function submitWfModal() {
+  const name  = document.getElementById('wfmName').value.trim();
+  const path  = document.getElementById('wfmPath').value.trim();
+  const image = document.getElementById('wfmImage').value.trim();
+  const errEl = document.getElementById('wfModalError');
+
+  errEl.textContent = '';
+  if (!name) { errEl.textContent = 'Name is required.'; return; }
+  if (!path) { errEl.textContent = 'Path is required.'; return; }
+
+  const secrets = readKvList('wfmSecrets');
+  const env     = readKvList('wfmEnv');
+
+  const body = { name, path };
+  if (image) body.runner_image = image;
+  if (Object.keys(secrets).length) body.secrets = secrets;
+  if (Object.keys(env).length)     body.env     = env;
+
+  const { watchName, wfName } = editingWfContext;
+  const isEdit = wfName !== null;
+  const url = isEdit
+    ? '/api/watches/' + encodeURIComponent(watchName) + '/workflows/' + encodeURIComponent(wfName)
+    : '/api/watches/' + encodeURIComponent(watchName) + '/workflows';
+
+  try {
+    const res = await fetch(url, {
+      method: isEdit ? 'PUT' : 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (!res.ok) { errEl.textContent = data.error || 'Failed to save workflow.'; return; }
+    closeWfModal();
+    loadWatches();
+  } catch (e) {
+    errEl.textContent = 'Network error: ' + e.message;
+  }
+}
+
+async function deleteWorkflow(watchName, wfName) {
+  if (!confirm('Delete workflow "' + wfName + '" from "' + watchName + '"?')) return;
+  try {
+    const res = await fetch(
+      '/api/watches/' + encodeURIComponent(watchName) + '/workflows/' + encodeURIComponent(wfName),
+      { method: 'DELETE' }
+    );
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      alert('Failed to delete: ' + (d.error || 'HTTP ' + res.status));
+      return;
+    }
+    loadWatches();
+  } catch (e) {
+    alert('Network error: ' + e.message);
+  }
+}
+
+// ─── Key-value helpers ────────────────────────────────────────────────────────
+
+function addKvRow(listId, key, value) {
+  const listEl = document.getElementById(listId);
+  const row = document.createElement('div');
+  row.className = 'kv-row';
+  row.innerHTML = `
+    <input class="form-input kv-key" type="text" placeholder="key" value="${esc(key || '')}">
+    <input class="form-input kv-val" type="text" placeholder="value" value="${esc(value || '')}">
+    <button class="btn-remove" onclick="this.closest('.kv-row').remove()" title="Remove">&#10005;</button>
+  `;
+  listEl.appendChild(row);
+}
+
+function readKvList(listId) {
+  const result = {};
+  document.querySelectorAll('#' + listId + ' .kv-row').forEach(row => {
+    const k = row.querySelector('.kv-key').value.trim();
+    const v = row.querySelector('.kv-val').value.trim();
+    if (k) result[k] = v;
+  });
+  return result;
+}
+
+// ─── Users ────────────────────────────────────────────────────────────────────
+
+async function loadUsers() {
+  const wrap = document.getElementById('usersTableWrap');
+  wrap.innerHTML = '<div class="empty-notice">Loading&hellip;</div>';
+  try {
+    const res = await fetch('/api/users');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const users = await res.json();
+    renderUsersTable(users);
+  } catch (e) {
+    wrap.innerHTML = '<div class="empty-notice" style="color:var(--status-failure)">Failed to load users: ' + esc(e.message) + '</div>';
+  }
+}
+
+function renderUsersTable(users) {
+  const wrap = document.getElementById('usersTableWrap');
+  if (!users || users.length === 0) {
+    wrap.innerHTML = '<div class="empty-notice">No users found.</div>';
+    return;
+  }
+  let rows = users.map(u => {
+    const isSelf = currentUser && u.id === currentUser.id;
+    const created = u.created_at ? new Date(u.created_at).toLocaleDateString() : '';
+    return `
+      <tr>
+        <td>${esc(u.username)}${isSelf ? ' <span style="font-size:10px;color:var(--text-muted)">(you)</span>' : ''}</td>
+        <td><span class="role-badge ${esc(u.role)}">${esc(u.role)}</span></td>
+        <td style="color:var(--text-muted)">${esc(created)}</td>
+        <td>
+          <div class="td-actions">
+            <button class="btn" style="font-size:11px" onclick="showChangePassword(${u.id})">Change password</button>
+            ${!isSelf ? `<button class="btn btn-danger" style="font-size:11px" onclick="deleteUser(${u.id}, '${esc(u.username)}')">Delete</button>` : ''}
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+  wrap.innerHTML = `
+    <table class="users-table">
+      <thead>
+        <tr>
+          <th>Username</th>
+          <th>Role</th>
+          <th>Created</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+}
+
+function showAddUserForm() {
+  document.getElementById('ufUsername').value = '';
+  document.getElementById('ufPassword').value = '';
+  document.getElementById('ufRole').value = 'user';
+  document.getElementById('userFormError').textContent = '';
+  document.getElementById('userForm').classList.remove('hidden');
+  document.getElementById('ufUsername').focus();
+}
+
+function hideUserForm() {
+  document.getElementById('userForm').classList.add('hidden');
+}
+
+async function submitUserForm() {
+  const username = document.getElementById('ufUsername').value.trim();
+  const password = document.getElementById('ufPassword').value;
+  const role     = document.getElementById('ufRole').value;
+  const errEl    = document.getElementById('userFormError');
+
+  errEl.textContent = '';
+  if (!username) { errEl.textContent = 'Username is required.'; return; }
+  if (!password) { errEl.textContent = 'Password is required.'; return; }
+
+  try {
+    const res = await fetch('/api/users', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ username, password, role }),
+    });
+    const data = await res.json();
+    if (!res.ok) { errEl.textContent = data.error || 'Failed to create user.'; return; }
+    hideUserForm();
+    loadUsers();
+  } catch (e) {
+    errEl.textContent = 'Network error: ' + e.message;
+  }
+}
+
+async function deleteUser(id, username) {
+  if (!confirm('Delete user "' + username + '"? This cannot be undone.')) return;
+  try {
+    const res = await fetch('/api/users/' + id, { method: 'DELETE' });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      alert('Failed to delete: ' + (d.error || 'HTTP ' + res.status));
+      return;
+    }
+    loadUsers();
+  } catch (e) {
+    alert('Network error: ' + e.message);
+  }
+}
+
+async function showChangePassword(id) {
+  const newPass = prompt('New password:');
+  if (newPass === null) return;
+  if (!newPass.trim()) { alert('Password cannot be empty.'); return; }
+  try {
+    const res = await fetch('/api/users/' + id + '/password', {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ password: newPass }),
+    });
+    const data = await res.json();
+    if (!res.ok) { alert('Failed: ' + (data.error || 'HTTP ' + res.status)); return; }
+  } catch (e) {
+    alert('Network error: ' + e.message);
+  }
+}
+
 // ─── Utils ────────────────────────────────────────────────────────────────────
 
 function esc(str) {
@@ -903,6 +2246,23 @@ function esc(str) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
 }
+
+// ─── Initialization ───────────────────────────────────────────────────────────
+
+document.addEventListener('DOMContentLoaded', () => {
+  // Enter key submits login/setup forms
+  document.getElementById('loginPassword').addEventListener('keydown', e => {
+    if (e.key === 'Enter') handleLogin();
+  });
+  document.getElementById('loginUsername').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('loginPassword').focus();
+  });
+  document.getElementById('setupConfirm').addEventListener('keydown', e => {
+    if (e.key === 'Enter') handleSetup();
+  });
+
+  checkSetup();
+});
 </script>
 </body>
 </html>

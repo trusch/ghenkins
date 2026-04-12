@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"net/http/cookiejar"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"testing"
@@ -14,6 +16,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/trusch/ghenkins/internal/auth"
 	"github.com/trusch/ghenkins/internal/logserver"
 	"github.com/trusch/ghenkins/internal/store"
 )
@@ -32,12 +35,33 @@ func newTestServer(t *testing.T) (*logserver.Server, store.Store, string) {
 	return srv, st, logDir
 }
 
+// authedClient returns an http.Client that carries a valid admin session cookie for the given test server URL.
+func authedClient(t *testing.T, st store.Store, baseURL string) *http.Client {
+	t.Helper()
+	ctx := context.Background()
+
+	hash, err := auth.HashPassword("testpass")
+	require.NoError(t, err)
+	require.NoError(t, st.CreateUser(ctx, "test-user-id", "testadmin", hash, "admin"))
+
+	token, err := auth.GenerateToken()
+	require.NoError(t, err)
+	require.NoError(t, st.CreateSession(ctx, token, "test-user-id", time.Now().Add(time.Hour)))
+
+	jar, err := cookiejar.New(nil)
+	require.NoError(t, err)
+	u, _ := url.Parse(baseURL)
+	jar.SetCookies(u, []*http.Cookie{{Name: "session", Value: token}})
+	return &http.Client{Jar: jar}
+}
+
 func TestListRunsEmpty(t *testing.T) {
-	srv, _, _ := newTestServer(t)
+	srv, st, _ := newTestServer(t)
 	ts := httptest.NewServer(srv.Handler())
 	defer ts.Close()
 
-	resp, err := http.Get(ts.URL + "/runs")
+	client := authedClient(t, st, ts.URL)
+	resp, err := client.Get(ts.URL + "/runs")
 	require.NoError(t, err)
 	defer resp.Body.Close()
 
@@ -69,7 +93,8 @@ func TestListRuns(t *testing.T) {
 	ts := httptest.NewServer(srv.Handler())
 	defer ts.Close()
 
-	resp, err := http.Get(ts.URL + "/runs")
+	client := authedClient(t, st, ts.URL)
+	resp, err := client.Get(ts.URL + "/runs")
 	require.NoError(t, err)
 	defer resp.Body.Close()
 
@@ -81,11 +106,12 @@ func TestListRuns(t *testing.T) {
 }
 
 func TestRunLogNotFound(t *testing.T) {
-	srv, _, _ := newTestServer(t)
+	srv, st, _ := newTestServer(t)
 	ts := httptest.NewServer(srv.Handler())
 	defer ts.Close()
 
-	resp, err := http.Get(ts.URL + "/runs/nonexistent/log")
+	client := authedClient(t, st, ts.URL)
+	resp, err := client.Get(ts.URL + "/runs/nonexistent/log")
 	require.NoError(t, err)
 	defer resp.Body.Close()
 
@@ -121,7 +147,8 @@ func TestRunLogTerminal(t *testing.T) {
 	ts := httptest.NewServer(srv.Handler())
 	defer ts.Close()
 
-	resp, err := http.Get(ts.URL + "/runs/finished-run/log")
+	client := authedClient(t, st, ts.URL)
+	resp, err := client.Get(ts.URL + "/runs/finished-run/log")
 	require.NoError(t, err)
 	defer resp.Body.Close()
 
@@ -159,7 +186,8 @@ func TestRunLogTerminalMissingFile(t *testing.T) {
 	ts := httptest.NewServer(srv.Handler())
 	defer ts.Close()
 
-	resp, err := http.Get(ts.URL + "/runs/no-log-run/log")
+	client := authedClient(t, st, ts.URL)
+	resp, err := client.Get(ts.URL + "/runs/no-log-run/log")
 	require.NoError(t, err)
 	defer resp.Body.Close()
 

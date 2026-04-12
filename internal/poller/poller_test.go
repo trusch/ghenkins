@@ -48,6 +48,34 @@ func (s *memStore) DeleteRun(_ context.Context, _ string) error               { 
 func (s *memStore) RunExists(_ context.Context, _, _, _ string) (bool, error) { return false, nil }
 func (s *memStore) Close() error                                               { return nil }
 
+// Users
+func (s *memStore) CreateUser(_ context.Context, _, _, _, _ string) error        { return nil }
+func (s *memStore) GetUserByUsername(_ context.Context, _ string) (*store.User, error) {
+	return nil, nil
+}
+func (s *memStore) GetUserByID(_ context.Context, _ string) (*store.User, error) { return nil, nil }
+func (s *memStore) ListUsers(_ context.Context) ([]*store.User, error)            { return nil, nil }
+func (s *memStore) DeleteUser(_ context.Context, _ string) error                  { return nil }
+func (s *memStore) UpdateUserPassword(_ context.Context, _, _ string) error       { return nil }
+func (s *memStore) UserCount(_ context.Context) (int, error)                      { return 0, nil }
+
+// Sessions
+func (s *memStore) CreateSession(_ context.Context, _, _ string, _ time.Time) error { return nil }
+func (s *memStore) GetSession(_ context.Context, _ string) (*store.Session, error)  { return nil, nil }
+func (s *memStore) DeleteSession(_ context.Context, _ string) error                 { return nil }
+
+// Watches
+func (s *memStore) ListWatches(_ context.Context) ([]*store.DBWatch, error)    { return nil, nil }
+func (s *memStore) GetWatch(_ context.Context, _ string) (*store.DBWatch, error) {
+	return nil, nil
+}
+func (s *memStore) CreateWatch(_ context.Context, _ *store.DBWatch) error           { return nil }
+func (s *memStore) UpdateWatch(_ context.Context, _ *store.DBWatch) error           { return nil }
+func (s *memStore) DeleteWatch(_ context.Context, _ string) error                   { return nil }
+func (s *memStore) CreateWorkflow(_ context.Context, _ *store.DBWorkflow) error     { return nil }
+func (s *memStore) UpdateWorkflow(_ context.Context, _ *store.DBWorkflow) error     { return nil }
+func (s *memStore) DeleteWorkflow(_ context.Context, _, _ string) error             { return nil }
+
 // newGHClient creates a github.Client pointed at the given test server URL.
 func newGHClient(serverURL string) *github.Client {
 	u, _ := url.Parse(serverURL + "/")
