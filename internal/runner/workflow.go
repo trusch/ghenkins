@@ -23,6 +23,12 @@ type RunDefaults struct {
 	WorkingDirectory string `yaml:"working-directory"`
 }
 
+type JobBindMount struct {
+	Host      string `yaml:"host"`
+	Container string `yaml:"container"`
+	ReadOnly  bool   `yaml:"read-only"`
+}
+
 type Job struct {
 	Name           string            `yaml:"name"`
 	RunsOn         interface{}       `yaml:"runs-on"`
@@ -32,6 +38,7 @@ type Job struct {
 	Defaults       *Defaults         `yaml:"defaults"`
 	TimeoutMinutes int               `yaml:"timeout-minutes"`
 	Steps          []*Step           `yaml:"steps"`
+	ExtraBinds     []JobBindMount    `yaml:"extra-binds"`
 }
 
 type Step struct {

@@ -189,6 +189,46 @@ func (r *podmanJobRunner) RunJob(ctx context.Context, jobID string, job *Job, wf
 		BindMount{HostPath: aptLists, ContainerPath: "/var/lib/apt/lists"},
 	)
 
+	// Bazel cache (for daml SDK / damlc builds)
+	bazelCache := filepath.Join(r.cacheDir, "bazel")
+	_ = os.MkdirAll(bazelCache, 0o755)
+	extraBinds = append(extraBinds,
+		BindMount{HostPath: bazelCache, ContainerPath: "/root/.cache/bazel"},
+	)
+
+	// SBT / Ivy / Coursier caches (for Scala/Canton builds)
+	sbtCache := filepath.Join(r.cacheDir, "sbt")
+	ivyCache := filepath.Join(r.cacheDir, "ivy2")
+	coursierCache := filepath.Join(r.cacheDir, "coursier")
+	_ = os.MkdirAll(sbtCache, 0o755)
+	_ = os.MkdirAll(ivyCache, 0o755)
+	_ = os.MkdirAll(coursierCache, 0o755)
+	extraBinds = append(extraBinds,
+		BindMount{HostPath: sbtCache, ContainerPath: "/root/.sbt"},
+		BindMount{HostPath: ivyCache, ContainerPath: "/root/.ivy2"},
+		BindMount{HostPath: coursierCache, ContainerPath: "/root/.cache/coursier"},
+	)
+
+	// damlc-dist: pre-built damlc.tar.gz for canton builds
+	if info.Repo == "zenith-network/canton" {
+		home, _ := os.UserHomeDir()
+		damlcDist := filepath.Join(home, "projects", "canton-build", "dist")
+		_ = os.MkdirAll(damlcDist, 0o755)
+		extraBinds = append(extraBinds,
+			BindMount{HostPath: damlcDist, ContainerPath: "/damlc-dist", ReadOnly: true},
+		)
+	}
+
+	// Workflow-declared extra bind mounts
+	for _, b := range job.ExtraBinds {
+		_ = os.MkdirAll(b.Host, 0o755)
+		extraBinds = append(extraBinds, BindMount{
+			HostPath:      b.Host,
+			ContainerPath: b.Container,
+			ReadOnly:      b.ReadOnly,
+		})
+	}
+
 	// Per-run artifact dir: steps write to /artifacts/, we collect after run
 	artifactDir := filepath.Join(r.cacheDir, "artifacts", info.RunID)
 	_ = os.MkdirAll(artifactDir, 0o755)
