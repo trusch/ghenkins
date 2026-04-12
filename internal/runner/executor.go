@@ -123,10 +123,13 @@ func (r *podmanJobRunner) RunJob(ctx context.Context, jobID string, job *Job, wf
 	ctx, cancel := context.WithTimeout(ctx, time.Duration(timeoutMin)*time.Minute)
 	defer cancel()
 
-	// 3. Resolve container image
+	// 3. Resolve container image: config override > runs-on from YAML > last resort
 	image := defaultImage
 	if image == "" {
 		image = job.RunsOnImage()
+	}
+	if image == "" {
+		image = "ubuntu:22.04"
 	}
 
 	// 4. Create OS temp dir for runner files

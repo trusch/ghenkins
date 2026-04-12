@@ -181,14 +181,10 @@ func (r *PodmanRunner) Run(ctx context.Context, j poller.Job, wf config.Workflow
 		return 0, fmt.Errorf("resolve secrets: %w", err)
 	}
 
-	// 6. Determine image: wf.RunnerImage > r.defaultImage > fallback
+	// 6. Determine image: wf.RunnerImage (config override) takes priority.
+	// If unset, RunJob will use runs-on from the workflow YAML.
+	// r.defaultImage is a last-resort fallback when neither is set.
 	imageForRun := wf.RunnerImage
-	if imageForRun == "" {
-		imageForRun = r.defaultImage
-	}
-	if imageForRun == "" {
-		imageForRun = "ubuntu:22.04"
-	}
 
 	// 7. Build JobInfo
 	ref := "refs/heads/" + j.Branch
