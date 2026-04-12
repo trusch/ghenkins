@@ -31,7 +31,8 @@ func newTestServer(t *testing.T) (*logserver.Server, store.Store, string) {
 	require.NoError(t, err)
 	t.Cleanup(func() { st.Close() })
 
-	srv := logserver.New("127.0.0.1:0", logDir, st, 100*1024*1024, 7*24*time.Hour, zerolog.Nop())
+	artifactDir := filepath.Join(dir, "artifacts")
+	srv := logserver.New("127.0.0.1:0", logDir, artifactDir, st, 100*1024*1024, 7*24*time.Hour, zerolog.Nop())
 	return srv, st, logDir
 }
 
@@ -209,7 +210,7 @@ func TestRetentionByAge(t *testing.T) {
 	require.NoError(t, err)
 	defer st.Close()
 
-	srv := logserver.New("127.0.0.1:0", logDir, st, 100*1024*1024, time.Hour, zerolog.Nop())
+	srv := logserver.New("127.0.0.1:0", logDir, filepath.Join(dir, "artifacts"), st, 100*1024*1024, time.Hour, zerolog.Nop())
 
 	oldFile := filepath.Join(logDir, "old.log")
 	require.NoError(t, os.WriteFile(oldFile, []byte("old"), 0o644))
@@ -239,7 +240,7 @@ func TestRetentionBySize(t *testing.T) {
 	defer st.Close()
 
 	// maxBytes = 10 bytes, maxAge = 1 year (so age won't trigger)
-	srv := logserver.New("127.0.0.1:0", logDir, st, 10, 365*24*time.Hour, zerolog.Nop())
+	srv := logserver.New("127.0.0.1:0", logDir, filepath.Join(dir, "artifacts"), st, 10, 365*24*time.Hour, zerolog.Nop())
 
 	// Write two files: older one should be deleted first.
 	older := filepath.Join(logDir, "older.log")

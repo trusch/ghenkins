@@ -15,6 +15,7 @@ import (
 	"github.com/trusch/ghenkins/internal/config"
 	"github.com/trusch/ghenkins/internal/poller"
 	"github.com/trusch/ghenkins/internal/secrets"
+	"github.com/trusch/ghenkins/internal/store"
 )
 
 // Runner executes a single workflow run.
@@ -113,6 +114,8 @@ type PodmanRunner struct {
 	defaultImage string // fallback image when runs-on is not a valid image
 	log          zerolog.Logger
 	JobCallback  JobCallback // called after each job completes (or is skipped)
+	CurrentRunID string      // DB run ID; set by daemon before each Run() call
+	Store        store.Store // store for upserting artifacts; set by daemon
 }
 
 // NewPodman creates a PodmanRunner. defaultImage is used when the workflow does not specify
@@ -190,6 +193,10 @@ func (r *PodmanRunner) Run(ctx context.Context, j poller.Job, wf config.Workflow
 	if j.EventType == "pull_request" {
 		ref = fmt.Sprintf("refs/pull/%d/head", j.PRNumber)
 	}
+	runID := r.CurrentRunID
+	if runID == "" {
+		runID = newRunID()
+	}
 	info := JobInfo{
 		SHA:          j.SHA,
 		Ref:          ref,
@@ -198,7 +205,7 @@ func (r *PodmanRunner) Run(ctx context.Context, j poller.Job, wf config.Workflow
 		Repo:         j.Repo,
 		Owner:        j.Owner,
 		RepoName:     j.RepoName,
-		RunID:        newRunID(),
+		RunID:        runID,
 		RunNumber:    1,
 		Actor:        "ghenkins",
 		EventPayload: eventJSON,
@@ -212,7 +219,7 @@ func (r *PodmanRunner) Run(ctx context.Context, j poller.Job, wf config.Workflow
 	}
 
 	// 9. Create job runner
-	jobRunner := &podmanJobRunner{conn: conn, WorkspaceDir: wtDir, cacheDir: r.cacheDir}
+	jobRunner := &podmanJobRunner{conn: conn, WorkspaceDir: wtDir, cacheDir: r.cacheDir, store: r.Store}
 
 	// 10. Execute jobs level by level (sequential within each level for MVP)
 	exitCode := 0

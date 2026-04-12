@@ -79,6 +79,10 @@ func (s *memStore) UpsertRunJob(_ context.Context, _ *store.RunJob) error       
 func (s *memStore) ListRunJobs(_ context.Context, _ string) ([]*store.RunJob, error) {
 	return nil, nil
 }
+func (s *memStore) UpsertArtifact(_ context.Context, _ store.RunArtifact) error { return nil }
+func (s *memStore) ListRunArtifacts(_ context.Context, _ string) ([]*store.RunArtifact, error) {
+	return nil, nil
+}
 
 // newGHClient creates a github.Client pointed at the given test server URL.
 func newGHClient(serverURL string) *github.Client {

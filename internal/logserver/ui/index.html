@@ -737,6 +737,37 @@ select.form-input {
 
 @keyframes pulse   { 0%,100%{opacity:1} 50%{opacity:0.3} }
 @keyframes fadein  { from{opacity:0;transform:translateY(-4px)} to{opacity:1;transform:none} }
+.artifact-panel {
+  flex-shrink: 0;
+  padding: 10px 20px;
+  background: var(--bg-surface);
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.artifact-panel-title {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-right: 4px;
+}
+.artifact-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--accent);
+  text-decoration: none;
+}
+.artifact-item:hover { background: var(--bg-selected); }
+.artifact-size { color: var(--text-muted); font-size: 11px; }
 </style>
 </head>
 <body>
@@ -1959,6 +1990,7 @@ async function showRunDetail(projectName, runId) {
   updateRunDetailHeader(run);
   setupLogScroll();
   startLogStream(runId);
+  loadArtifacts(runId);
   loadJobChips(run);
 
   if (!isTerminal(run.status)) {
@@ -2408,6 +2440,33 @@ function renderJobChips(panelEl, jobsData, workflowJobs) {
     chip.innerHTML = `<span>${statusDotIcon(status)}</span><span class="job-chip-name">${esc(name)}</span>${dur ? `<span class="job-chip-dur">${esc(dur)}</span>` : ''}`;
     panelEl.appendChild(chip);
   });
+}
+
+function formatBytes(n) {
+  if (n < 1024) return n + ' B';
+  if (n < 1048576) return (n/1024).toFixed(1) + ' KB';
+  if (n < 1073741824) return (n/1048576).toFixed(1) + ' MB';
+  return (n/1073741824).toFixed(1) + ' GB';
+}
+
+async function loadArtifacts(runId) {
+  const footerEl = document.getElementById('logFooter');
+  try {
+    const res = await fetch('/runs/' + runId + '/artifacts');
+    if (!res.ok) return;
+    const artifacts = await res.json();
+    if (!artifacts || artifacts.length === 0) return;
+    const panel = document.createElement('div');
+    panel.className = 'artifact-panel';
+    panel.innerHTML = '<div class="artifact-panel-title">Artifacts</div>' +
+      artifacts.map(a => `
+        <a class="artifact-item" href="/runs/${encodeURIComponent(runId)}/artifacts/${encodeURIComponent(a.filename)}" download>
+          <span class="artifact-filename">${esc(a.filename)}</span>
+          <span class="artifact-size">${esc(formatBytes(a.size))}</span>
+        </a>
+      `).join('');
+    footerEl?.parentNode?.insertBefore(panel, footerEl);
+  } catch (_) {}
 }
 
 async function loadJobChips(run) {

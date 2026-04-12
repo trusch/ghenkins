@@ -2,12 +2,17 @@ package runner
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
+	"github.com/trusch/ghenkins/internal/store"
 )
 
 // JobInfo holds the per-run metadata needed to populate GITHUB_* env vars.
@@ -54,6 +59,7 @@ type podmanJobRunner struct {
 	conn         context.Context // Podman bindings connection context
 	WorkspaceDir string          // host path mounted at /workspace in containers
 	cacheDir     string          // host path for caching action repos (~/.cache/ghenkins)
+	store        store.Store     // nil if not wired; used to persist artifacts
 }
 
 // newPodmanJobRunner creates a podmanJobRunner connected to the Podman socket.
@@ -183,6 +189,13 @@ func (r *podmanJobRunner) RunJob(ctx context.Context, jobID string, job *Job, wf
 		BindMount{HostPath: aptLists, ContainerPath: "/var/lib/apt/lists"},
 	)
 
+	// Per-run artifact dir: steps write to /artifacts/, we collect after run
+	artifactDir := filepath.Join(r.cacheDir, "artifacts", info.RunID)
+	_ = os.MkdirAll(artifactDir, 0o755)
+	extraBinds = append(extraBinds,
+		BindMount{HostPath: artifactDir, ContainerPath: "/artifacts"},
+	)
+
 	// 10. Create + start container
 	containerName := fmt.Sprintf("ghenkins-%s-%d", sanitizeName(jobID), time.Now().UnixNano())
 	container, err := CreateContainer(r.conn, ContainerConfig{
@@ -267,6 +280,34 @@ func (r *podmanJobRunner) RunJob(ctx context.Context, jobID string, job *Job, wf
 	finalStatus := execCtx.JobStatus
 	if finalStatus == JobStatusPending {
 		finalStatus = JobStatusSuccess
+	}
+
+	// Collect artifacts written to /artifacts/ inside the container
+	if r.store != nil {
+		_ = filepath.WalkDir(artifactDir, func(path string, d fs.DirEntry, err error) error {
+			if err != nil || d.IsDir() {
+				return nil
+			}
+			fi, err := d.Info()
+			if err != nil {
+				return nil
+			}
+			h := sha256.New()
+			f, err := os.Open(path)
+			if err != nil {
+				return nil
+			}
+			defer f.Close()
+			_, _ = io.Copy(h, f)
+			_ = r.store.UpsertArtifact(context.Background(), store.RunArtifact{
+				ID:       uuid.New().String(),
+				RunID:    info.RunID,
+				Filename: filepath.Base(path),
+				Size:     fi.Size(),
+				SHA256:   fmt.Sprintf("%x", h.Sum(nil)),
+			})
+			return nil
+		})
 	}
 
 	return JobResult{

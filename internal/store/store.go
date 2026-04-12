@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	_ "modernc.org/sqlite"
 )
 
@@ -97,6 +98,15 @@ type DBWorkflow struct {
 	TimeoutMinutes int               `json:"timeout_minutes,omitempty"`
 }
 
+type RunArtifact struct {
+	ID        string    `json:"id"`
+	RunID     string    `json:"run_id"`
+	Filename  string    `json:"filename"`
+	Size      int64     `json:"size"`
+	SHA256    string    `json:"sha256"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
 type Store interface {
 	CreateRun(ctx context.Context, r *Run) error
 	UpdateRunStatus(ctx context.Context, id string, status RunStatus, exitCode *int, finishedAt *time.Time) error
@@ -134,6 +144,10 @@ type Store interface {
 	// RunJobs
 	UpsertRunJob(ctx context.Context, job *RunJob) error
 	ListRunJobs(ctx context.Context, runID string) ([]*RunJob, error)
+
+	// RunArtifacts
+	UpsertArtifact(ctx context.Context, a RunArtifact) error
+	ListRunArtifacts(ctx context.Context, runID string) ([]*RunArtifact, error)
 
 	Close() error
 }
@@ -674,6 +688,52 @@ func (s *SQLiteStore) ListRunJobs(ctx context.Context, runID string) ([]*RunJob,
 	return jobs, rows.Err()
 }
 
+// ---- RunArtifacts ----
+
+func (s *SQLiteStore) UpsertArtifact(ctx context.Context, a RunArtifact) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if a.ID == "" {
+		a.ID = uuid.New().String()
+	}
+	_, err := s.db.ExecContext(ctx,
+		`INSERT INTO run_artifacts (id, run_id, filename, size, sha256, created_at)
+		 VALUES (?, ?, ?, ?, ?, ?)
+		 ON CONFLICT(run_id, filename) DO UPDATE SET
+		   id = excluded.id,
+		   size = excluded.size,
+		   sha256 = excluded.sha256,
+		   created_at = excluded.created_at`,
+		a.ID, a.RunID, a.Filename, a.Size, a.SHA256,
+		a.CreatedAt.UTC().Format(time.RFC3339Nano),
+	)
+	if err != nil {
+		return fmt.Errorf("upsert artifact: %w", err)
+	}
+	return nil
+}
+
+func (s *SQLiteStore) ListRunArtifacts(ctx context.Context, runID string) ([]*RunArtifact, error) {
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT id, run_id, filename, size, sha256, created_at
+		 FROM run_artifacts WHERE run_id = ? ORDER BY filename ASC`, runID)
+	if err != nil {
+		return nil, fmt.Errorf("list run artifacts: %w", err)
+	}
+	defer rows.Close()
+
+	var artifacts []*RunArtifact
+	for rows.Next() {
+		a, err := scanArtifact(rows)
+		if err != nil {
+			return nil, err
+		}
+		artifacts = append(artifacts, a)
+	}
+	return artifacts, rows.Err()
+}
+
 // ---- Scanners ----
 
 // scanner is implemented by both *sql.Row and *sql.Rows
@@ -814,6 +874,24 @@ func scanRunJob(s scanner) (*RunJob, error) {
 		rj.FinishedAt = &t
 	}
 	return &rj, nil
+}
+
+func scanArtifact(s scanner) (*RunArtifact, error) {
+	var a RunArtifact
+	var createdAt string
+	err := s.Scan(&a.ID, &a.RunID, &a.Filename, &a.Size, &a.SHA256, &createdAt)
+	if err != nil {
+		return nil, fmt.Errorf("scan artifact: %w", err)
+	}
+	t, err := time.Parse(time.RFC3339Nano, createdAt)
+	if err != nil {
+		t, err = time.Parse("2006-01-02T15:04:05Z", createdAt)
+		if err != nil {
+			t = time.Time{}
+		}
+	}
+	a.CreatedAt = t
+	return &a, nil
 }
 
 // ---- Helpers ----

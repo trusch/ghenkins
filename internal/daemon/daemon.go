@@ -85,9 +85,11 @@ func New(cfg *config.Config, log zerolog.Logger) (*Daemon, error) {
 	}
 
 	// 7. Create log server.
+	artifactDir := filepath.Join(home, ".cache", "ghenkins", "artifacts")
 	logSrv := logserver.New(
 		cfg.LogServer.Bind,
 		logDir,
+		artifactDir,
 		st,
 		cfg.LogServer.RetentionBytes,
 		time.Duration(cfg.LogServer.RetentionDays)*24*time.Hour,
@@ -322,8 +324,10 @@ func (d *Daemon) runJob(ctx context.Context, j poller.Job, wf config.WorkflowRef
 		TargetURL: targetURL,
 	})
 
-	// Set job-level callback if the runner supports it.
+	// Set job-level callback and artifact wiring if the runner supports it.
 	if pr, ok := d.runner.(*runner.PodmanRunner); ok {
+		pr.CurrentRunID = runID
+		pr.Store = d.store
 		capturedRunID := runID
 		pr.JobCallback = func(jobName string, status runner.JobStatus, startedAt, finishedAt time.Time) {
 			rj := &store.RunJob{

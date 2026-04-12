@@ -37,13 +37,14 @@ func userFromContext(ctx context.Context) *store.User {
 }
 
 type Server struct {
-	bind     string
-	logDir   string
-	store    store.Store
-	maxBytes int64
-	maxAge   time.Duration
-	log      zerolog.Logger
-	rc       RunControl
+	bind        string
+	logDir      string
+	artifactDir string
+	store       store.Store
+	maxBytes    int64
+	maxAge      time.Duration
+	log         zerolog.Logger
+	rc          RunControl
 }
 
 // SetRunControl sets the RunControl implementation on the server.
@@ -51,14 +52,15 @@ func (s *Server) SetRunControl(rc RunControl) {
 	s.rc = rc
 }
 
-func New(bind, logDir string, st store.Store, maxBytes int64, maxAge time.Duration, log zerolog.Logger) *Server {
+func New(bind, logDir, artifactDir string, st store.Store, maxBytes int64, maxAge time.Duration, log zerolog.Logger) *Server {
 	return &Server{
-		bind:     bind,
-		logDir:   logDir,
-		store:    st,
-		maxBytes: maxBytes,
-		maxAge:   maxAge,
-		log:      log,
+		bind:        bind,
+		logDir:      logDir,
+		artifactDir: artifactDir,
+		store:       st,
+		maxBytes:    maxBytes,
+		maxAge:      maxAge,
+		log:         log,
 	}
 }
 
@@ -172,6 +174,10 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("PUT /api/watches/{name}/workflows/{wfname}/content", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/api/projects/"+r.PathValue("name")+"/workflows/"+r.PathValue("wfname")+"/content", http.StatusMovedPermanently)
 	})
+
+	// Artifacts
+	mux.HandleFunc("GET /runs/{id}/artifacts", s.authMiddleware(s.handleListArtifacts))
+	mux.HandleFunc("GET /runs/{id}/artifacts/{filename}", s.authMiddleware(s.handleGetArtifact))
 
 	// Run control
 	mux.HandleFunc("POST /runs/{id}/cancel", s.authMiddleware(s.handleCancelRun))
@@ -465,6 +471,43 @@ func (s *Server) handleListRunJobs(w http.ResponseWriter, r *http.Request) {
 		jobs = []*store.RunJob{}
 	}
 	writeJSON(w, http.StatusOK, jobs)
+}
+
+// ---- Artifact handlers ----
+
+func (s *Server) handleListArtifacts(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	artifacts, err := s.store.ListRunArtifacts(r.Context(), id)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal error"})
+		return
+	}
+	if artifacts == nil {
+		artifacts = []*store.RunArtifact{}
+	}
+	writeJSON(w, http.StatusOK, artifacts)
+}
+
+func (s *Server) handleGetArtifact(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	filename := r.PathValue("filename")
+	artifacts, err := s.store.ListRunArtifacts(r.Context(), id)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal error"})
+		return
+	}
+	found := false
+	for _, a := range artifacts {
+		if a.Filename == filename {
+			found = true
+			break
+		}
+	}
+	if !found {
+		http.NotFound(w, r)
+		return
+	}
+	http.ServeFile(w, r, filepath.Join(s.artifactDir, id, filename))
 }
 
 // ---- Watches handlers ----
