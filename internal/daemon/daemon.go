@@ -131,6 +131,20 @@ func New(cfg *config.Config, log zerolog.Logger) (*Daemon, error) {
 	}, nil
 }
 
+func (d *Daemon) recoverStaleRuns(ctx context.Context) {
+	runs, err := d.store.ListRuns(ctx, 0) // 0 = all runs
+	if err != nil {
+		return
+	}
+	now := time.Now()
+	for _, run := range runs {
+		if run.Status == store.RunStatusQueued || run.Status == store.RunStatusRunning {
+			d.log.Warn().Str("runID", run.ID).Str("status", string(run.Status)).Msg("recovering stale run")
+			_ = d.store.UpdateRunStatus(ctx, run.ID, store.RunStatusError, nil, &now)
+		}
+	}
+}
+
 func (d *Daemon) seedWatchesFromConfig(ctx context.Context) error {
 	watches, err := d.store.ListWatches(ctx)
 	if err != nil {
@@ -161,19 +175,26 @@ func configWatchToDBWatch(w config.Watch) *store.DBWatch {
 	}
 	for _, wf := range w.Workflows {
 		dbw.Workflows = append(dbw.Workflows, &store.DBWorkflow{
-			WatchName:   w.Name,
-			Name:        wf.Name,
-			Path:        wf.Path,
-			RunnerImage: wf.RunnerImage,
-			Secrets:     wf.Secrets,
-			Env:         wf.Env,
+			WatchName:      w.Name,
+			Name:           wf.Name,
+			Path:           wf.Path,
+			RunnerImage:    wf.RunnerImage,
+			Secrets:        wf.Secrets,
+			Env:            wf.Env,
+			TimeoutMinutes: wf.TimeoutMinutes,
 		})
 	}
 	return dbw
 }
 
 func (d *Daemon) Run(ctx context.Context) error {
-	// 0. Seed watches from config if DB is empty.
+	// 0a. Recover stale runs from previous crashes.
+	d.recoverStaleRuns(ctx)
+
+	// 0b. Set RunControl on log server so it can trigger/cancel runs.
+	d.logSrv.SetRunControl(d)
+
+	// 0c. Seed watches from config if DB is empty.
 	if err := d.seedWatchesFromConfig(ctx); err != nil {
 		d.log.Error().Err(err).Msg("seed watches from config")
 	}
@@ -195,11 +216,12 @@ func (d *Daemon) Run(ctx context.Context) error {
 			}
 			for _, wf := range dw.Workflows {
 				w.Workflows = append(w.Workflows, config.WorkflowRef{
-					Name:        wf.Name,
-					Path:        wf.Path,
-					RunnerImage: wf.RunnerImage,
-					Secrets:     wf.Secrets,
-					Env:         wf.Env,
+					Name:           wf.Name,
+					Path:           wf.Path,
+					RunnerImage:    wf.RunnerImage,
+					Secrets:        wf.Secrets,
+					Env:            wf.Env,
+					TimeoutMinutes: wf.TimeoutMinutes,
 				})
 			}
 			watches = append(watches, w)
@@ -254,6 +276,9 @@ func (d *Daemon) runJob(ctx context.Context, j poller.Job, wf config.WorkflowRef
 	defer func() { <-d.sem }()
 
 	runCtx, cancel := context.WithCancel(ctx)
+	if wf.TimeoutMinutes > 0 {
+		runCtx, cancel = context.WithTimeout(runCtx, time.Duration(wf.TimeoutMinutes)*time.Minute)
+	}
 	runID := generateID()
 	d.inFlight.Store(runID, cancel)
 	defer func() { cancel(); d.inFlight.Delete(runID) }()
@@ -357,6 +382,67 @@ func (d *Daemon) runJob(ctx context.Context, j poller.Job, wf config.WorkflowRef
 		Status: reportStatus, Description: desc,
 		TargetURL: targetURL,
 	})
+}
+
+// TriggerRun implements RunControl. It enqueues a manual job for the given project/workflow.
+func (d *Daemon) TriggerRun(ctx context.Context, projectName, workflowName string) (string, error) {
+	watch, err := d.store.GetWatch(ctx, projectName)
+	if err != nil || watch == nil {
+		return "", fmt.Errorf("project %q not found", projectName)
+	}
+
+	var wfRef *store.DBWorkflow
+	for _, wf := range watch.Workflows {
+		if wf.Name == workflowName {
+			wfRef = wf
+			break
+		}
+	}
+	if wfRef == nil {
+		return "", fmt.Errorf("workflow %q not found", workflowName)
+	}
+
+	parts := strings.SplitN(watch.Repo, "/", 2)
+	owner, repoName := parts[0], parts[1]
+
+	job := poller.Job{
+		WatchName: projectName,
+		Repo:      watch.Repo,
+		Owner:     owner,
+		RepoName:  repoName,
+		SHA:       "manual",
+		Branch:    watch.Branch,
+		EventType: "manual",
+		WorkflowRefs: []config.WorkflowRef{{
+			Name:           wfRef.Name,
+			Path:           wfRef.Path,
+			RunnerImage:    wfRef.RunnerImage,
+			Secrets:        wfRef.Secrets,
+			Env:            wfRef.Env,
+			TimeoutMinutes: wfRef.TimeoutMinutes,
+		}},
+	}
+
+	select {
+	case d.jobs <- job:
+	default:
+		return "", fmt.Errorf("job queue full")
+	}
+
+	return "", nil
+}
+
+// CancelRun implements RunControl. It cancels the in-flight run with the given ID.
+func (d *Daemon) CancelRun(ctx context.Context, runID string) error {
+	val, ok := d.inFlight.Load(runID)
+	if !ok {
+		return fmt.Errorf("run %q not found or already finished", runID)
+	}
+	cancel := val.(context.CancelFunc)
+	cancel()
+	now := time.Now()
+	_ = d.store.UpdateRunStatus(ctx, runID, store.RunStatusCanceled, nil, &now)
+	return nil
 }
 
 func generateID() string {

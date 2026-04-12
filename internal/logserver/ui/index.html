@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>ghenkins</title>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -33,10 +33,7 @@
   --accent: #3b82f6;
 }
 
-html, body {
-  height: 100%;
-  overflow: hidden;
-}
+html, body { height: 100%; overflow: hidden; }
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -48,15 +45,58 @@ body {
   flex-direction: column;
 }
 
-/* Scrollbar */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
 * { scrollbar-width: thin; scrollbar-color: #333 transparent; }
 
-/* Header */
+/* ── Full-screen auth pages ── */
+.fullpage {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-base);
+  z-index: 200;
+}
+.fullpage.hidden { display: none; }
+
+.auth-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 36px 40px;
+  width: 360px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.auth-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 18px;
+  font-weight: 700;
+}
+.auth-logo .logo-mark { color: var(--accent); font-size: 20px; }
+.auth-subtitle { font-size: 13px; color: var(--text-secondary); margin-top: -10px; }
+.auth-field { display: flex; flex-direction: column; gap: 5px; }
+.auth-field label { font-size: 12px; color: var(--text-secondary); font-weight: 500; }
+.error-msg { font-size: 12px; color: var(--status-failure); min-height: 18px; }
+
+/* ── App shell ── */
+#app {
+  display: none;
+  flex-direction: column;
+  height: 100vh;
+}
+#app.visible { display: flex; }
+
+/* ── Header ── */
 .app-header {
-  height: 44px;
+  height: 48px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -65,7 +105,6 @@ body {
   background: var(--bg-surface);
   border-bottom: 1px solid var(--border);
 }
-
 .logo {
   font-weight: 600;
   font-size: 14px;
@@ -73,20 +112,9 @@ body {
   align-items: center;
   gap: 7px;
   user-select: none;
+  cursor: pointer;
 }
-
-.logo-mark {
-  color: var(--accent);
-  font-size: 16px;
-  line-height: 1;
-}
-
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
+.logo-mark { color: var(--accent); font-size: 16px; line-height: 1; }
 .live-indicator {
   font-size: 11px;
   color: var(--text-muted);
@@ -95,97 +123,286 @@ body {
   gap: 5px;
   user-select: none;
 }
-
-.live-indicator .dot {
+.live-indicator .live-dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
   background: var(--status-success);
 }
+.live-indicator.active .live-dot { animation: pulse 2s ease-in-out infinite; }
 
-.live-indicator.active .dot {
-  animation: pulse 2s ease-in-out infinite;
-}
-
-.header-username {
-  font-size: 12px;
-  color: var(--text-secondary);
-  user-select: none;
-}
-
-.btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 5px 10px;
-  border-radius: 4px;
-  font-size: 12px;
-  font-family: inherit;
-  cursor: pointer;
-  border: 1px solid var(--border);
-  background: var(--bg-elevated);
-  color: var(--text-primary);
-  transition: background 100ms, color 100ms;
-  white-space: nowrap;
-}
-
-.btn:hover { background: #252525; }
-
-.btn-primary {
-  background: var(--accent);
-  color: white;
-  border-color: var(--accent);
-}
-.btn-primary:hover { background: #2563eb; border-color: #2563eb; }
-
-.btn-danger {
-  background: var(--bg-elevated);
-  color: var(--status-failure);
-  border-color: var(--border);
-}
-.btn-danger:hover { background: var(--status-failure-bg); }
-
-.btn-icon {
-  padding: 4px 8px;
-  font-size: 14px;
-  background: transparent;
-  border-color: transparent;
-}
-.btn-icon:hover { background: var(--bg-elevated); border-color: var(--border); }
-
-/* Body */
+/* ── App body ── */
 .app-body {
   display: flex;
   flex: 1;
   overflow: hidden;
 }
 
-/* Sidebar */
-.sidebar {
-  width: 280px;
+/* ── Sidebar ── */
+#sidebar {
+  width: 220px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
   background: var(--bg-surface);
   border-right: 1px solid var(--border);
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
-.sidebar-header {
-  padding: 10px 14px;
-  font-size: 11px;
+.nav-section { padding: 8px 0; }
+.nav-label {
+  font-size: 10px;
   font-weight: 600;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-muted);
-  border-bottom: 1px solid var(--border);
+  padding: 8px 16px 4px;
+}
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 16px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 100ms;
+  border-left: 3px solid transparent;
+  user-select: none;
+}
+.nav-item:hover { background: var(--bg-elevated); color: var(--text-primary); }
+.nav-item.active { background: var(--bg-elevated); color: var(--text-primary); border-left-color: var(--accent); }
+.nav-item .nav-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.nav-divider { border: none; border-top: 1px solid var(--border-subtle); margin: 4px 0; }
+.sidebar-bottom { margin-top: auto; padding: 8px 0; border-top: 1px solid var(--border-subtle); }
+
+/* ── Content area ── */
+.content-area {
+  flex: 1;
+  overflow-y: auto;
+  background: var(--bg-base);
+}
+
+/* content padding wrapper — views apply their own padding */
+.view-pad { padding: 24px 28px; }
+
+/* ── Buttons ── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  transition: opacity 100ms, background 100ms;
+  white-space: nowrap;
+}
+.btn:hover { background: #252525; }
+.btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.btn-primary:hover { background: #2563eb; border-color: #2563eb; }
+.btn-secondary { background: var(--bg-elevated); color: var(--text-primary); border-color: var(--border); }
+.btn-danger { background: var(--status-failure-bg); color: var(--status-failure); border-color: var(--status-failure); }
+.btn-danger:hover { opacity: 0.8; }
+.btn-trigger { background: var(--status-success-bg); color: var(--status-success); border-color: var(--status-success); }
+.btn-trigger:hover { opacity: 0.8; }
+.btn-icon { padding: 4px 8px; font-size: 13px; background: transparent; border-color: transparent; }
+.btn-icon:hover { background: var(--bg-elevated); border-color: var(--border); }
+.btn-sm { padding: 3px 8px; font-size: 11px; }
+
+/* ── Forms ── */
+.form-input {
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  padding: 6px 10px;
+  border-radius: 4px;
+  width: 100%;
+  font-size: 12px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 150ms;
+}
+.form-input:focus { border-color: var(--accent); }
+.form-input::placeholder { color: var(--text-muted); }
+select.form-input {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 28px;
+  cursor: pointer;
+}
+.form-group { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+.form-label { font-size: 11px; color: var(--text-secondary); font-weight: 500; }
+.form-row { display: flex; gap: 10px; margin-bottom: 10px; align-items: flex-start; }
+.form-row-col { display: flex; flex-direction: column; gap: 4px; }
+.form-section-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+.form-actions { display: flex; gap: 8px; justify-content: flex-end; padding-top: 4px; }
+.kv-row { display: flex; gap: 6px; margin-bottom: 6px; align-items: center; }
+.kv-row .form-input { flex: 1; }
+.kv-remove {
   flex-shrink: 0;
+  padding: 4px 7px;
+  font-size: 13px;
+  line-height: 1;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.kv-remove:hover { color: var(--status-failure); border-color: var(--status-failure); }
+.radio-group { display: flex; gap: 12px; align-items: center; padding: 6px 0; }
+.radio-group label { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text-secondary); cursor: pointer; }
+.radio-group input[type=radio] { accent-color: var(--accent); }
+.checkbox-group { display: flex; gap: 14px; align-items: center; padding: 4px 0; }
+.checkbox-group label { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text-secondary); cursor: pointer; }
+.checkbox-group input[type=checkbox] { accent-color: var(--accent); }
+
+/* ── Inline form panel ── */
+.inline-form {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 16px;
+  margin: 12px 0;
+}
+.inline-form.hidden { display: none; }
+
+/* ── Section header ── */
+.section-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  margin-bottom: 16px;
 }
+.section-title { font-size: 15px; font-weight: 600; }
+.section-subtitle { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
 
-.sidebar-count {
+/* ── Stat cards ── */
+.stats-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; margin-bottom: 24px; }
+.stat-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px 24px;
+}
+.stat-value { font-size: 32px; font-weight: 700; line-height: 1; margin-bottom: 6px; }
+.stat-label { font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; }
+
+/* ── Dashboard grid ── */
+.dashboard-grid { display: grid; grid-template-columns: 1fr 340px; gap: 20px; }
+@media (max-width: 1000px) { .dashboard-grid { grid-template-columns: 1fr; } }
+
+/* ── Runs table ── */
+.runs-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.runs-table th {
+  text-align: left;
+  padding: 6px 10px;
+  color: var(--text-muted);
+  font-weight: 500;
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.runs-table td { padding: 8px 10px; border-bottom: 1px solid var(--border-subtle); vertical-align: middle; }
+.runs-table tbody tr:hover td { background: var(--bg-elevated); cursor: pointer; }
+
+/* ── Project cards ── */
+.project-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin-bottom: 12px;
+  cursor: pointer;
+  transition: border-color 100ms;
+}
+.project-card:hover { border-color: var(--accent); }
+.project-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.project-name { font-size: 14px; font-weight: 600; }
+.project-meta { font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; }
+.project-footer { font-size: 11px; color: var(--text-muted); }
+
+/* ── Workflow cards ── */
+.workflow-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 14px 16px;
+  margin-bottom: 10px;
+}
+.workflow-header { display: flex; justify-content: space-between; align-items: center; }
+.workflow-name { font-size: 13px; font-weight: 600; }
+.workflow-meta { font-size: 11px; color: var(--text-muted); margin-top: 4px; font-family: ui-monospace, monospace; }
+.workflow-actions { display: flex; gap: 4px; flex-shrink: 0; }
+
+/* ── Breadcrumb ── */
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 20px;
+}
+.breadcrumb a { color: var(--accent); text-decoration: none; }
+.breadcrumb a:hover { text-decoration: underline; }
+.breadcrumb-sep { color: var(--text-muted); }
+
+/* ── Status dots ── */
+.dot-status { display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; vertical-align: middle; }
+.dot-queued   { background: var(--status-queued); }
+.dot-running  { background: var(--status-running); animation: pulse 1.5s ease-in-out infinite; }
+.dot-success  { background: var(--status-success); }
+.dot-failure  { background: var(--status-failure); }
+.dot-error    { background: var(--status-error); }
+.dot-canceled { background: var(--status-canceled); }
+
+/* ── Badges ── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+.badge.running::before { animation: pulse 1.5s ease-in-out infinite; }
+.badge.queued   { color: var(--status-queued);   background: var(--status-queued-bg); }
+.badge.running  { color: var(--status-running);  background: var(--status-running-bg); }
+.badge.success  { color: var(--status-success);  background: var(--status-success-bg); }
+.badge.failure  { color: var(--status-failure);  background: var(--status-failure-bg); }
+.badge.error    { color: var(--status-error);    background: var(--status-error-bg); }
+.badge.canceled { color: var(--status-canceled); background: var(--status-canceled-bg); }
+
+/* ── Role badge ── */
+.role-badge { display: inline-block; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 500; }
+.role-badge.admin { background: rgba(59,130,246,0.15); color: var(--accent); }
+.role-badge.user  { background: var(--bg-elevated); color: var(--text-secondary); }
+
+/* ── Count badge ── */
+.count-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -200,306 +417,61 @@ body {
   font-weight: 500;
 }
 
-.sidebar-footer {
-  padding: 6px 14px;
-  font-size: 10px;
-  color: var(--text-muted);
-  border-top: 1px solid var(--border-subtle);
-  flex-shrink: 0;
-  user-select: none;
-}
-
-.run-list {
-  flex: 1;
-  overflow-y: auto;
-}
-
-.run-list-empty {
-  padding: 24px 14px;
-  font-size: 12px;
-  color: var(--text-muted);
-  text-align: center;
-}
-
-/* Run items — improved layout */
-.run-item {
+/* ── Run detail layout ── */
+.run-detail-wrap {
   display: flex;
   flex-direction: column;
-  gap: 3px;
-  padding: 9px 14px 9px 10px;
-  border-bottom: 1px solid var(--border-subtle);
-  cursor: pointer;
-  transition: background 100ms;
-  border-left: 4px solid transparent;
-  position: relative;
-}
-
-.run-item:hover { background: var(--bg-elevated); }
-.run-item.selected {
-  background: var(--bg-selected);
-  border-left-color: var(--accent);
-}
-
-.run-item.status-queued   { border-left-color: var(--status-queued); }
-.run-item.status-running  { border-left-color: var(--status-running); }
-.run-item.status-success  { border-left-color: var(--status-success); }
-.run-item.status-failure  { border-left-color: var(--status-failure); }
-.run-item.status-error    { border-left-color: var(--status-error); }
-.run-item.status-canceled { border-left-color: var(--status-canceled); }
-
-.run-item.selected { border-left-color: var(--accent); }
-
-.run-item .row1 {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 6px;
-}
-
-.run-item .row1 .watch-workflow {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0;
-  flex: 1;
-}
-
-.run-item .row1 .watch-workflow .wf-sep {
-  color: var(--text-muted);
-  margin: 0 2px;
-}
-
-/* Compact status dot for run list */
-.status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  display: inline-block;
-}
-
-.status-dot.queued   { background: var(--status-queued); }
-.status-dot.running  { background: var(--status-running); animation: pulse 1.5s ease-in-out infinite; }
-.status-dot.success  { background: var(--status-success); }
-.status-dot.failure  { background: var(--status-failure); }
-.status-dot.error    { background: var(--status-error); }
-.status-dot.canceled { background: var(--status-canceled); }
-
-.run-item .row2 {
-  display: flex;
-  gap: 4px;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.run-item .row2-left {
-  display: flex;
-  gap: 5px;
-  align-items: center;
-  min-width: 0;
+  height: 100%;
   overflow: hidden;
 }
-
-.run-item .repo-name {
-  font-size: 11px;
-  color: var(--text-secondary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0;
-}
-
-.run-item .sha {
-  font-family: ui-monospace, "Menlo", "Monaco", monospace;
-  font-size: 11px;
-  color: var(--text-muted);
+.run-detail-header {
   flex-shrink: 0;
-}
-
-.run-item .row2-right {
-  font-size: 11px;
-  color: var(--text-muted);
-  white-space: nowrap;
-  flex-shrink: 0;
-  display: flex;
-  gap: 4px;
-  align-items: center;
-}
-
-/* Badges */
-.badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 2px 8px;
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.badge::before {
-  content: "";
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: currentColor;
-  flex-shrink: 0;
-}
-
-.badge.running::before { animation: pulse 1.5s ease-in-out infinite; }
-
-.badge.queued   { color: var(--status-queued);   background: var(--status-queued-bg); }
-.badge.running  { color: var(--status-running);  background: var(--status-running-bg); }
-.badge.success  { color: var(--status-success);  background: var(--status-success-bg); }
-.badge.failure  { color: var(--status-failure);  background: var(--status-failure-bg); }
-.badge.error    { color: var(--status-error);    background: var(--status-error-bg); }
-.badge.canceled { color: var(--status-canceled); background: var(--status-canceled-bg); }
-
-/* Detail panel */
-.detail {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  background: var(--bg-base);
-}
-
-.detail-header {
-  padding: 12px 20px;
-  border-bottom: 1px solid var(--border);
+  padding: 16px 20px;
   background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  align-items: flex-start;
-  gap: 16px;
-  flex-shrink: 0;
+  gap: 12px;
 }
+.run-detail-header-left { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.run-detail-header-right { flex-shrink: 0; text-align: right; }
+.run-detail-meta { font-size: 12px; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.sha-mono { font-family: ui-monospace, monospace; color: var(--accent); text-decoration: none; }
+.sha-mono:hover { text-decoration: underline; }
 
-.detail-header.hidden { display: none; }
-
-.detail-header .left {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.detail-header .title-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.detail-header .title {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.detail-header .watch-wf-label {
-  font-size: 12px;
-  color: var(--text-secondary);
-}
-
-.detail-header .watch-wf-label .wf-part {
-  color: var(--text-primary);
-  font-weight: 500;
-}
-
-.detail-header .meta {
-  font-size: 12px;
-  color: var(--text-secondary);
-  margin-top: 2px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
-.detail-header .meta .sha-mono {
-  font-family: ui-monospace, "Menlo", "Monaco", monospace;
-  color: var(--accent);
-  text-decoration: none;
-}
-
-.detail-header .meta .sha-mono:hover {
-  text-decoration: underline;
-}
-
-.detail-header .meta .gh-link {
-  color: var(--text-muted);
-  text-decoration: none;
-  font-size: 11px;
-}
-
-.detail-header .meta .gh-link:hover { color: var(--text-secondary); }
-
-.detail-header .meta .sep {
-  color: var(--text-muted);
-}
-
-.detail-header .right {
-  flex-shrink: 0;
-  text-align: right;
-}
-
-.detail-header .duration {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-secondary);
-  font-variant-numeric: tabular-nums;
-}
-
-/* Job graph area */
+/* ── Job graph ── */
 .job-graph-container {
-  min-height: 80px;
-  max-height: 220px;
-  overflow: hidden;
+  flex-shrink: 0;
   background: var(--bg-surface);
   border-bottom: 1px solid var(--border);
   padding: 12px 16px;
-  flex-shrink: 0;
-  display: none;
-}
-
-.job-graph-container.visible {
-  display: block;
-}
-
-.job-graph-inner {
+  min-height: 80px;
+  max-height: 220px;
   overflow-x: auto;
   overflow-y: hidden;
-  height: 100%;
+  display: none;
 }
+.job-graph-container.visible { display: block; }
 
-/* Log area */
-.log-wrapper {
-  position: relative;
+/* ── Log pane ── */
+.log-pane {
   flex: 1;
+  position: relative;
   overflow: hidden;
-  background: var(--bg-base);
 }
-
 .log-output {
   height: 100%;
   overflow-y: auto;
   padding: 16px 20px;
   white-space: pre-wrap;
   word-break: break-all;
-  font-family: "Berkeley Mono", "JetBrains Mono", "Fira Code", "Cascadia Code", ui-monospace, "Menlo", "Monaco", "Courier New", monospace;
+  font-family: "Berkeley Mono", "JetBrains Mono", "Fira Code", "Cascadia Code", ui-monospace, "Menlo", monospace;
   font-size: 12px;
   line-height: 1.6;
   color: var(--text-mono);
+  background: var(--bg-base);
 }
-
 .tail-indicator {
   position: absolute;
   bottom: 14px;
@@ -517,240 +489,39 @@ body {
 }
 .tail-indicator.visible { display: block; }
 
-/* Empty state */
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  gap: 8px;
-  color: var(--text-muted);
-  font-size: 13px;
-  text-align: center;
-}
-
-.empty-state .empty-logo {
-  font-size: 24px;
-  color: var(--accent);
-  margin-bottom: 4px;
-}
-
-.empty-state .empty-title {
-  font-weight: 600;
-  font-size: 14px;
-  color: var(--text-secondary);
-}
-
-/* No-run-selected empty state (in detail panel) */
-.no-run-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  gap: 8px;
-  color: var(--text-muted);
-  font-size: 13px;
-  text-align: center;
-}
-
-.no-run-state .nr-logo {
-  font-size: 20px;
-  color: var(--accent);
-  margin-bottom: 2px;
-}
-
-.no-run-state .nr-title {
-  font-weight: 600;
-  font-size: 14px;
-  color: var(--text-secondary);
-}
-
-/* Animations */
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.3; }
-}
-
-@keyframes fadein {
-  from { opacity: 0; transform: translateY(-4px); }
-  to   { opacity: 1; transform: none; }
-}
-
-.run-item.new { animation: fadein 300ms ease forwards; }
-
-/* Responsive: sidebar overlay on small screens */
-@media (max-width: 900px) {
-  .sidebar {
-    position: absolute;
-    top: 44px;
-    left: 0;
-    bottom: 0;
-    z-index: 100;
-    transform: translateX(-100%);
-    transition: transform 200ms ease;
-  }
-  .sidebar.open {
-    transform: translateX(0);
-  }
-  .back-btn {
-    display: flex !important;
-  }
-}
-
-.back-btn {
-  display: none;
-  align-items: center;
-  gap: 5px;
+/* ── YAML editor ── */
+.yaml-editor {
+  width: 100%;
+  min-height: 400px;
+  font-family: ui-monospace, "JetBrains Mono", monospace;
   font-size: 12px;
-  color: var(--text-secondary);
-  cursor: pointer;
-  padding: 2px 0;
-  user-select: none;
-}
-
-.back-btn:hover { color: var(--text-primary); }
-
-/* ── Full-screen pages (setup / login) ─────────────────────────────────────── */
-
-.fullpage {
-  position: fixed;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  line-height: 1.6;
   background: var(--bg-base);
-  z-index: 200;
-}
-
-.fullpage.hidden { display: none; }
-
-.auth-card {
-  background: var(--bg-surface);
+  color: var(--text-mono);
   border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 36px 40px;
-  width: 360px;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.auth-card .auth-logo {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 18px;
-  font-weight: 700;
-}
-
-.auth-card .auth-logo .logo-mark {
-  color: var(--accent);
-  font-size: 20px;
-}
-
-.auth-card .auth-subtitle {
-  font-size: 13px;
-  color: var(--text-secondary);
-  margin-top: -10px;
-}
-
-.auth-card .field {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
-.auth-card .field label {
-  font-size: 12px;
-  color: var(--text-secondary);
-  font-weight: 500;
-}
-
-.form-input {
-  border: 1px solid var(--border);
-  background: var(--bg-elevated);
-  color: var(--text-primary);
-  padding: 7px 10px;
   border-radius: 4px;
-  width: 100%;
-  font-size: 13px;
-  font-family: inherit;
+  padding: 12px;
+  resize: vertical;
+  tab-size: 2;
+  box-sizing: border-box;
   outline: none;
-  transition: border-color 150ms;
 }
-
-.form-input:focus {
-  border-color: var(--accent);
-}
-
-.form-input::placeholder {
-  color: var(--text-muted);
-}
-
-.error-msg {
-  font-size: 12px;
-  color: var(--status-failure);
-  min-height: 18px;
-}
-
-/* ── Settings modal ─────────────────────────────────────────────────────────── */
-
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.7);
-  z-index: 100;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  overflow-y: auto;
-  padding: 60px 16px;
-}
-
-.modal-overlay.hidden { display: none; }
-
-.modal-panel {
+.yaml-editor:focus { border-color: var(--accent); }
+.yaml-panel {
   background: var(--bg-surface);
-  width: 100%;
-  max-width: 700px;
-  border-radius: 8px;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  max-height: calc(100vh - 120px);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 16px;
+  margin-top: 12px;
 }
+.yaml-panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.yaml-panel-title { font-size: 13px; font-weight: 600; }
+.yaml-status { font-size: 12px; min-height: 18px; }
+.yaml-status.ok  { color: var(--status-success); }
+.yaml-status.err { color: var(--status-failure); }
 
-.modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
-}
-
-.modal-header .modal-title {
-  font-size: 15px;
-  font-weight: 600;
-}
-
-.modal-body {
-  flex: 1;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-}
-
-/* Tab bar */
-.tab-bar {
-  display: flex;
-  border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
-}
-
+/* ── Tab bar ── */
+.tab-bar { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 20px; flex-shrink: 0; }
 .tab-btn {
   padding: 10px 16px;
   font-size: 13px;
@@ -763,701 +534,306 @@ body {
   margin-bottom: -1px;
   transition: color 100ms;
 }
-
 .tab-btn:hover { color: var(--text-primary); }
+.tab-btn.active { color: var(--text-primary); border-bottom-color: var(--accent); }
+.tab-pane { display: none; }
+.tab-pane.active { display: block; }
 
-.tab-btn.active {
-  color: var(--text-primary);
-  border-bottom-color: var(--accent);
-}
-
-.tab-pane {
-  display: none;
-  padding: 20px;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.tab-pane.active { display: flex; }
-
-/* ── Settings content ───────────────────────────────────────────────────────── */
-
-.section-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 10px;
-}
-
-.section-title {
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--text-muted);
-}
-
-/* Watch list */
-.watch-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.watch-card {
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  overflow: hidden;
-  background: var(--bg-elevated);
-}
-
-.watch-card-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
-  cursor: pointer;
-  user-select: none;
-}
-
-.watch-card-header:hover { background: rgba(255,255,255,0.03); }
-
-.watch-expand-icon {
-  font-size: 10px;
-  color: var(--text-muted);
-  transition: transform 150ms;
-  width: 12px;
-  text-align: center;
-  flex-shrink: 0;
-}
-
-.watch-card.expanded .watch-expand-icon {
-  transform: rotate(90deg);
-}
-
-.watch-card-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.watch-card-name {
-  font-weight: 600;
-  font-size: 13px;
-}
-
-.watch-card-sub {
-  font-size: 11px;
-  color: var(--text-secondary);
-  margin-top: 1px;
-}
-
-.watch-card-actions {
-  display: flex;
-  gap: 4px;
-  flex-shrink: 0;
-}
-
-.watch-card-body {
-  display: none;
-  border-top: 1px solid var(--border);
-  padding: 12px 14px;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.watch-card.expanded .watch-card-body { display: flex; }
-
-.wf-list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.wf-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
-  border-radius: 4px;
-}
-
-.wf-item-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.wf-item-name {
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.wf-item-sub {
-  font-size: 11px;
-  color: var(--text-muted);
-  font-family: ui-monospace, "Menlo", "Monaco", monospace;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* Inline form */
-.inline-form {
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.inline-form.hidden { display: none; }
-
-.form-row {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.form-row label {
-  font-size: 11px;
-  color: var(--text-secondary);
-  font-weight: 500;
-}
-
-.form-row-inline {
-  display: flex;
-  gap: 8px;
-  align-items: flex-end;
-}
-
-.form-row-inline .form-row {
-  flex: 1;
-}
-
-.radio-group {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  padding: 6px 0;
-}
-
-.radio-group label {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 12px;
-  color: var(--text-secondary);
-  cursor: pointer;
-}
-
-.radio-group input[type=radio] {
-  accent-color: var(--accent);
-}
-
-.checkbox-group {
-  display: flex;
-  gap: 14px;
-  align-items: center;
-  padding: 4px 0;
-}
-
-.checkbox-group label {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 12px;
-  color: var(--text-secondary);
-  cursor: pointer;
-}
-
-.checkbox-group input[type=checkbox] {
-  accent-color: var(--accent);
-}
-
-.kv-list {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
-.kv-row {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.kv-row .form-input {
-  flex: 1;
-}
-
-.kv-row .btn-remove {
-  flex-shrink: 0;
-  padding: 4px 7px;
-  font-size: 13px;
-  line-height: 1;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  color: var(--text-muted);
-  cursor: pointer;
-}
-.kv-row .btn-remove:hover { color: var(--status-failure); border-color: var(--status-failure); }
-
-.form-section-label {
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text-muted);
-  margin-bottom: 2px;
-}
-
-.form-actions {
-  display: flex;
-  gap: 8px;
-  justify-content: flex-end;
-  padding-top: 4px;
-}
-
-/* Users table */
-.users-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 12px;
-}
-
-.users-table th {
-  text-align: left;
-  padding: 6px 10px;
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text-muted);
-  border-bottom: 1px solid var(--border);
-}
-
-.users-table td {
-  padding: 8px 10px;
-  border-bottom: 1px solid var(--border-subtle);
-  color: var(--text-primary);
-}
-
+/* ── Users table ── */
+.users-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.users-table th { text-align: left; padding: 6px 10px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); border-bottom: 1px solid var(--border); }
+.users-table td { padding: 8px 10px; border-bottom: 1px solid var(--border-subtle); color: var(--text-primary); }
 .users-table tr:last-child td { border-bottom: none; }
+.td-actions { display: flex; gap: 5px; justify-content: flex-end; }
 
-.users-table .td-actions {
+/* ── Empty / notice states ── */
+.empty-notice { font-size: 12px; color: var(--text-muted); padding: 16px 0; text-align: center; }
+.empty-state {
   display: flex;
-  gap: 5px;
-  justify-content: flex-end;
-}
-
-.role-badge {
-  display: inline-block;
-  padding: 1px 7px;
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 500;
-}
-
-.role-badge.admin {
-  background: rgba(59,130,246,0.15);
-  color: var(--accent);
-}
-
-.role-badge.user {
-  background: var(--bg-elevated);
-  color: var(--text-secondary);
-}
-
-.empty-notice {
-  font-size: 12px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 8px;
   color: var(--text-muted);
-  padding: 12px 0;
+  font-size: 13px;
   text-align: center;
+  padding: 40px;
 }
+.empty-state-logo { font-size: 24px; color: var(--accent); margin-bottom: 4px; }
+.empty-state-title { font-weight: 600; font-size: 14px; color: var(--text-secondary); }
 
-select.form-input {
-  appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 10px center;
-  padding-right: 28px;
-  cursor: pointer;
+/* ── Toast ── */
+#toastContainer {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 999;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
-
-/* YAML editor */
-.yaml-editor {
-  width: 100%;
-  min-height: 400px;
-  font-family: ui-monospace, "JetBrains Mono", "Fira Code", monospace;
+.toast {
+  padding: 8px 14px;
+  border-radius: 6px;
   font-size: 12px;
-  line-height: 1.6;
-  background: var(--bg-base);
-  color: var(--text-mono);
+  font-weight: 500;
+  background: var(--bg-elevated);
   border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 12px;
-  resize: vertical;
-  tab-size: 2;
+  color: var(--text-primary);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  animation: fadein 200ms ease;
 }
+.toast.success { border-color: var(--status-success); color: var(--status-success); }
+.toast.error   { border-color: var(--status-failure); color: var(--status-failure); }
 
-.yaml-editor:focus {
-  outline: none;
-  border-color: var(--accent);
-}
+/* ── Misc ── */
+.sep { color: var(--text-muted); }
+.mono { font-family: ui-monospace, monospace; }
 
-.yaml-status {
-  font-size: 12px;
-  min-height: 18px;
-  padding-top: 2px;
-}
-
-.yaml-status.ok { color: var(--status-success); }
-.yaml-status.err { color: var(--status-failure); }
+@keyframes pulse   { 0%,100%{opacity:1} 50%{opacity:0.3} }
+@keyframes fadein  { from{opacity:0;transform:translateY(-4px)} to{opacity:1;transform:none} }
 </style>
 </head>
 <body>
 
-<!-- ── Setup page ─────────────────────────────────────────────────────────── -->
+<!-- Setup page -->
 <div class="fullpage hidden" id="setupPage">
   <div class="auth-card">
-    <div class="auth-logo">
-      <span class="logo-mark">&#9632;</span>
-      ghenkins
-    </div>
+    <div class="auth-logo"><span class="logo-mark">&#9632;</span> ghenkins</div>
     <div class="auth-subtitle">Welcome. Create an admin account to get started.</div>
-    <div class="field">
+    <div class="auth-field">
       <label for="setupUsername">Username</label>
-      <input class="form-input" type="text" id="setupUsername" autocomplete="username" placeholder="">
+      <input class="form-input" type="text" id="setupUsername" autocomplete="username">
     </div>
-    <div class="field">
+    <div class="auth-field">
       <label for="setupPassword">Password</label>
-      <input class="form-input" type="password" id="setupPassword" autocomplete="new-password" placeholder="">
+      <input class="form-input" type="password" id="setupPassword" autocomplete="new-password">
     </div>
-    <div class="field">
-      <label for="setupConfirm">Confirm</label>
-      <input class="form-input" type="password" id="setupConfirm" autocomplete="new-password" placeholder="">
+    <div class="auth-field">
+      <label for="setupConfirm">Confirm password</label>
+      <input class="form-input" type="password" id="setupConfirm" autocomplete="new-password">
     </div>
     <button class="btn btn-primary" id="setupBtn" onclick="handleSetup()">Set up ghenkins</button>
     <div class="error-msg" id="setupError"></div>
   </div>
 </div>
 
-<!-- ── Login page ─────────────────────────────────────────────────────────── -->
+<!-- Login page -->
 <div class="fullpage hidden" id="loginPage">
   <div class="auth-card">
-    <div class="auth-logo">
-      <span class="logo-mark">&#9632;</span>
-      ghenkins
-    </div>
-    <div class="field">
+    <div class="auth-logo"><span class="logo-mark">&#9632;</span> ghenkins</div>
+    <div class="auth-field">
       <label for="loginUsername">Username</label>
-      <input class="form-input" type="text" id="loginUsername" autocomplete="username" placeholder="">
+      <input class="form-input" type="text" id="loginUsername" autocomplete="username">
     </div>
-    <div class="field">
+    <div class="auth-field">
       <label for="loginPassword">Password</label>
-      <input class="form-input" type="password" id="loginPassword" autocomplete="current-password" placeholder="">
+      <input class="form-input" type="password" id="loginPassword" autocomplete="current-password">
     </div>
     <button class="btn btn-primary" id="loginBtn" onclick="handleLogin()">Log in</button>
     <div class="error-msg" id="loginError"></div>
   </div>
 </div>
 
-<!-- ── Main app ───────────────────────────────────────────────────────────── -->
-<header class="app-header" id="appHeader" style="display:none">
-  <div class="logo">
-    <span class="logo-mark">&#9632;</span>
-    ghenkins
-  </div>
-  <div class="header-right">
-    <div class="live-indicator" id="liveIndicator">
-      <div class="dot"></div>
-      live
+<!-- Main app -->
+<div id="app">
+  <!-- Header -->
+  <header class="app-header">
+    <div class="logo" onclick="navigate('#dashboard')">
+      <span class="logo-mark">&#9632;</span>
+      ghenkins
     </div>
-    <span class="header-username" id="headerUsername"></span>
-    <button class="btn" title="Settings" onclick="openSettings()">&#9881; Settings</button>
-    <button class="btn" onclick="handleLogout()">Log out</button>
-  </div>
-</header>
-
-<div class="app-body" id="appBody" style="display:none">
-  <aside class="sidebar" id="sidebar">
-    <div class="sidebar-header">
-      <span>Runs</span>
-      <span class="sidebar-count" id="runsCount">0</span>
-    </div>
-    <div class="run-list" id="runList">
-      <div class="run-list-empty">Loading&hellip;</div>
-    </div>
-    <div class="sidebar-footer">j/k to navigate</div>
-  </aside>
-
-  <main class="detail" id="detail">
-    <div class="detail-header hidden" id="detailHeader">
-      <div class="left">
-        <div class="title-row">
-          <span class="back-btn" id="backBtn" onclick="closeSidebar()">&#8592; Runs</span>
-          <span class="badge" id="detailBadge"></span>
-          <span class="watch-wf-label" id="detailWatchWf"></span>
-        </div>
-        <div class="meta" id="detailMeta"></div>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div class="live-indicator" id="liveIndicator">
+        <div class="live-dot"></div>
+        live
       </div>
-      <div class="right">
-        <div class="duration" id="detailDuration"></div>
-      </div>
+      <span id="headerUsername" style="font-size:12px;color:var(--text-secondary)"></span>
+      <button class="btn btn-sm" onclick="navigate('#settings')">&#9881; Settings</button>
+      <button class="btn btn-sm" onclick="doLogout()">Log out</button>
     </div>
+  </header>
 
-    <!-- Job graph -->
-    <div class="job-graph-container" id="jobGraphContainer">
-      <div class="job-graph-inner" id="jobGraphInner"></div>
-    </div>
-
-    <div class="log-wrapper" id="logWrapper">
-      <div class="log-output" id="logOutput"></div>
-      <div class="tail-indicator" id="tailIndicator" onclick="resumeTail()">&#8593; scrolled up &middot; click to resume</div>
-      <div class="empty-state" id="emptyState">
-        <div class="empty-logo">&#9632;</div>
-        <div class="empty-title">ghenkins</div>
-        <div>No runs yet. Trigger a workflow<br>to see logs here.</div>
-      </div>
-      <!-- No-run-selected state -->
-      <div class="no-run-state" id="noRunState" style="display:none">
-        <div class="nr-logo">&#9632;</div>
-        <div class="nr-title">ghenkins</div>
-        <div>Select a run to view its logs.</div>
-      </div>
-    </div>
-  </main>
-</div>
-
-<!-- ── Settings modal ─────────────────────────────────────────────────────── -->
-<div class="modal-overlay hidden" id="settingsOverlay" onclick="handleOverlayClick(event)">
-  <div class="modal-panel" onclick="event.stopPropagation()">
-    <div class="modal-header">
-      <span class="modal-title">Settings</span>
-      <button class="btn btn-icon" onclick="closeSettings()">&#10005;</button>
-    </div>
-    <div class="modal-body">
-      <div class="tab-bar" id="settingsTabBar">
-        <button class="tab-btn active" data-tab="watches" onclick="switchTab('watches')">Watches</button>
-        <button class="tab-btn" data-tab="users" onclick="switchTab('users')" id="usersTabBtn" style="display:none">Users</button>
-      </div>
-
-      <!-- Watches tab -->
-      <div class="tab-pane active" id="tab-watches">
-        <div class="section-header">
-          <span class="section-title">Watches</span>
-          <button class="btn btn-primary" onclick="showAddWatchForm()">+ Add watch</button>
-        </div>
-        <!-- Add/edit watch form -->
-        <div class="inline-form hidden" id="watchForm">
-          <div class="form-row-inline">
-            <div class="form-row">
-              <label>Name *</label>
-              <input class="form-input" type="text" id="wfName" placeholder="my-watch">
-            </div>
-            <div class="form-row">
-              <label>Repo *</label>
-              <input class="form-input" type="text" id="wfRepo" placeholder="owner/repo">
-            </div>
-          </div>
-          <div class="form-row">
-            <label>Trigger</label>
-            <div class="radio-group">
-              <label><input type="radio" name="wfTrigger" value="branch" checked onchange="updateTriggerFields()"> Branch</label>
-              <label><input type="radio" name="wfTrigger" value="pr" onchange="updateTriggerFields()"> PR number</label>
-            </div>
-          </div>
-          <div class="form-row" id="wfBranchRow">
-            <label>Branch</label>
-            <input class="form-input" type="text" id="wfBranch" placeholder="main">
-          </div>
-          <div class="form-row hidden" id="wfPrRow">
-            <label>PR number</label>
-            <input class="form-input" type="number" id="wfPr" placeholder="42">
-          </div>
-          <div class="form-row">
-            <label>Events</label>
-            <div class="checkbox-group">
-              <label><input type="checkbox" id="wfEventPush" checked> push</label>
-              <label><input type="checkbox" id="wfEventPR"> pull_request</label>
-            </div>
-          </div>
-          <div class="form-actions">
-            <button class="btn" onclick="hideWatchForm()">Cancel</button>
-            <button class="btn btn-primary" id="watchFormSubmit" onclick="submitWatchForm()">Add watch</button>
-          </div>
-          <div class="error-msg" id="watchFormError"></div>
-        </div>
-
-        <div class="watch-list" id="watchList">
-          <div class="empty-notice">Loading&hellip;</div>
+  <!-- Body -->
+  <div class="app-body">
+    <!-- Sidebar -->
+    <nav id="sidebar">
+      <div class="nav-section">
+        <div class="nav-item" data-route="#dashboard" onclick="navigate('#dashboard')">
+          Dashboard
         </div>
       </div>
-
-      <!-- Users tab -->
-      <div class="tab-pane" id="tab-users">
-        <div class="section-header">
-          <span class="section-title">Users</span>
-          <button class="btn btn-primary" onclick="showAddUserForm()">+ Add user</button>
-        </div>
-        <!-- Add user form -->
-        <div class="inline-form hidden" id="userForm">
-          <div class="form-row-inline">
-            <div class="form-row">
-              <label>Username *</label>
-              <input class="form-input" type="text" id="ufUsername" autocomplete="off">
-            </div>
-            <div class="form-row">
-              <label>Password *</label>
-              <input class="form-input" type="password" id="ufPassword" autocomplete="new-password">
-            </div>
-            <div class="form-row" style="max-width:120px">
-              <label>Role</label>
-              <select class="form-input" id="ufRole">
-                <option value="user">user</option>
-                <option value="admin">admin</option>
-              </select>
-            </div>
-          </div>
-          <div class="form-actions">
-            <button class="btn" onclick="hideUserForm()">Cancel</button>
-            <button class="btn btn-primary" onclick="submitUserForm()">Add user</button>
-          </div>
-          <div class="error-msg" id="userFormError"></div>
-        </div>
-
-        <div id="usersTableWrap">
-          <div class="empty-notice">Loading&hellip;</div>
+      <hr class="nav-divider">
+      <div class="nav-section">
+        <div class="nav-label">Projects</div>
+        <div id="projectsNav"><!-- populated dynamically --></div>
+        <div style="padding:6px 10px;">
+          <button class="btn btn-sm" style="width:100%" onclick="navigate('#projects')">&#65291; New project</button>
         </div>
       </div>
-    </div>
+      <div class="sidebar-bottom">
+        <div class="nav-item" data-route="#settings" onclick="navigate('#settings')">
+          &#9881; Settings
+        </div>
+      </div>
+    </nav>
+
+    <!-- Content area -->
+    <main class="content-area" id="contentArea">
+      <!-- views rendered here -->
+    </main>
   </div>
 </div>
 
-<!-- Workflow add/edit modal (nested, reused) -->
-<div class="modal-overlay hidden" id="wfModalOverlay" onclick="handleWfOverlayClick(event)" style="z-index:110">
-  <div class="modal-panel" onclick="event.stopPropagation()" style="max-width:560px">
-    <div class="modal-header">
-      <span class="modal-title" id="wfModalTitle">Add workflow</span>
-      <button class="btn btn-icon" onclick="closeWfModal()">&#10005;</button>
-    </div>
-    <div class="modal-body">
-      <div style="padding:16px;display:flex;flex-direction:column;gap:12px">
-        <div class="form-row-inline">
-          <div class="form-row">
-            <label>Name *</label>
-            <input class="form-input" type="text" id="wfmName" placeholder="build">
-          </div>
-          <div class="form-row">
-            <label>Runner image</label>
-            <input class="form-input" type="text" id="wfmImage" placeholder="ubuntu:22.04">
-          </div>
-        </div>
-        <div class="form-row">
-          <label>Path *</label>
-          <input class="form-input" type="text" id="wfmPath" placeholder="/absolute/path/to/workflow.yaml">
-        </div>
-        <div>
-          <div class="form-section-label">Secrets</div>
-          <div class="kv-list" id="wfmSecrets"></div>
-          <button class="btn" style="margin-top:6px;font-size:11px" onclick="addKvRow('wfmSecrets')">+ Add secret</button>
-        </div>
-        <div>
-          <div class="form-section-label">Environment variables</div>
-          <div class="kv-list" id="wfmEnv"></div>
-          <button class="btn" style="margin-top:6px;font-size:11px" onclick="addKvRow('wfmEnv')">+ Add env var</button>
-        </div>
-        <div class="form-actions">
-          <button class="btn" onclick="closeWfModal()">Cancel</button>
-          <button class="btn btn-primary" id="wfModalSubmit" onclick="submitWfModal()">Add workflow</button>
-        </div>
-        <div class="error-msg" id="wfModalError"></div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- YAML editor modal -->
-<div class="modal-overlay hidden" id="yamlModalOverlay" onclick="handleYamlOverlayClick(event)" style="z-index:120">
-  <div class="modal-panel" onclick="event.stopPropagation()" style="max-width:760px">
-    <div class="modal-header">
-      <span class="modal-title" id="yamlModalTitle">Edit YAML</span>
-      <button class="btn btn-icon" onclick="closeYamlModal()">&#10005;</button>
-    </div>
-    <div class="modal-body">
-      <div style="padding:16px;display:flex;flex-direction:column;gap:10px">
-        <div id="yamlLoadingMsg" style="font-size:12px;color:var(--text-muted)">Loading&hellip;</div>
-        <textarea class="yaml-editor" id="yamlEditorArea" style="display:none"></textarea>
-        <div class="form-actions" id="yamlEditorActions" style="display:none">
-          <div class="yaml-status" id="yamlStatus"></div>
-          <button class="btn" onclick="closeYamlModal()">Cancel</button>
-          <button class="btn btn-primary" onclick="saveYaml()">Save</button>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
+<!-- Toast container -->
+<div id="toastContainer"></div>
 
 <script>
 'use strict';
 
-// ─── Global State ────────────────────────────────────────────────────────────
+// ── Global state ──────────────────────────────────────────────────────────────
 
-let runs = [];
-let selectedId = null;
-let tailEnabled = true;
-let activeReader = null;
-let pollController = null;
-let pollIntervalId = null;
-let durationIntervalId = null;
-let metaIntervalId = null;
 let currentUser = null;
+let currentRoute = null;
+let pollTimer = null;
+let logReader = null;
+let logAbort = null;
+let tailEnabled = true;
+let selectedJobBox = null;
+let _lastJobsData = null;
+let _lastWorkflowJobs = null;
+let jobGraphTimer = null;
 
-// Job graph state
-let jobGraphIntervalId = null;
-let selectedJobBox = null; // currently highlighted job name
+// ── Utils ─────────────────────────────────────────────────────────────────────
 
-// Settings state
-let editingWatchName = null;  // null = adding, string = editing
-let editingWfContext = null;  // { watchName, wfName (null=adding) }
-let wfDataCache = {};         // "watchName\x00wfName" -> wf object
+function esc(str) {
+  return String(str ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
 
-// YAML editor state
-let yamlEditContext = null; // { watchName, wfName }
+function isTerminal(status) {
+  return status === 'success' || status === 'failure' || status === 'error' || status === 'canceled';
+}
 
-// ─── Auth / Setup ────────────────────────────────────────────────────────────
+function formatDuration(run) {
+  if (!run.started_at) return '—';
+  const start = new Date(run.started_at);
+  const end = run.finished_at ? new Date(run.finished_at) : new Date();
+  const secs = Math.max(0, Math.floor((end - start) / 1000));
+  if (secs < 60) return secs + 's';
+  const m = Math.floor(secs / 60), s = secs % 60;
+  if (m < 60) return m + 'm ' + s + 's';
+  return Math.floor(m / 60) + 'h ' + (m % 60) + 'm';
+}
+
+function formatJobDuration(job) {
+  if (!job.started_at) return '';
+  const start = new Date(job.started_at);
+  const end = job.finished_at ? new Date(job.finished_at) : new Date();
+  const secs = Math.max(0, Math.floor((end - start) / 1000));
+  if (secs < 60) return secs + 's';
+  const m = Math.floor(secs / 60), s = secs % 60;
+  return m + 'm' + s + 's';
+}
+
+function formatAge(dt) {
+  if (!dt) return '';
+  const secs = Math.floor((Date.now() - new Date(dt).getTime()) / 1000);
+  if (secs < 10)  return 'just now';
+  if (secs < 60)  return secs + 's ago';
+  const m = Math.floor(secs / 60);
+  if (m < 60)     return m + 'm ago';
+  const h = Math.floor(m / 60);
+  if (h < 24)     return h + 'h ago';
+  return Math.floor(h / 24) + 'd ago';
+}
+
+function shortRepo(repo) {
+  return repo.replace(/^https?:\/\/[^/]+\//, '');
+}
+
+function statusDotHtml(status) {
+  return `<span class="dot-status dot-${esc(status)}"></span>`;
+}
+
+function badgeHtml(status) {
+  return `<span class="badge ${esc(status)}">${esc(status)}</span>`;
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+
+function toast(msg, type = 'info') {
+  const el = document.createElement('div');
+  el.className = 'toast' + (type !== 'info' ? ' ' + type : '');
+  el.textContent = msg;
+  document.getElementById('toastContainer').appendChild(el);
+  setTimeout(() => el.remove(), 3000);
+}
+
+// ── Navigation ────────────────────────────────────────────────────────────────
+
+function navigate(hash) {
+  window.location.hash = hash;
+}
+
+function route() {
+  clearInterval(pollTimer);
+  pollTimer = null;
+  stopLogStream();
+  stopJobGraphPolling();
+
+  const hash = window.location.hash || '#dashboard';
+  currentRoute = hash;
+
+  // Update sidebar active state
+  document.querySelectorAll('#sidebar .nav-item[data-route]').forEach(el => {
+    const r = el.dataset.route;
+    const active = hash === r || (r && r !== '#dashboard' && hash.startsWith(r));
+    el.classList.toggle('active', active);
+  });
+
+  // Parse route
+  const parts = hash.replace(/^#/, '').split('/');
+  const view = parts[0] || 'dashboard';
+
+  if (view === 'dashboard' || hash === '#') {
+    showDashboard();
+  } else if (view === 'projects' && parts.length === 1) {
+    showProjectsList();
+  } else if (view === 'projects' && parts.length === 2) {
+    showProject(decodeURIComponent(parts[1]));
+  } else if (view === 'projects' && parts.length === 4 && parts[2] === 'runs') {
+    showRunDetail(decodeURIComponent(parts[1]), decodeURIComponent(parts[3]));
+  } else if (view === 'settings') {
+    showSettings(parts[1] || 'projects');
+  } else {
+    showDashboard();
+  }
+}
+
+window.addEventListener('hashchange', route);
+
+// ── Auth ──────────────────────────────────────────────────────────────────────
 
 async function checkSetup() {
   try {
     const res = await fetch('/api/setup/status');
     const data = await res.json();
-    if (data.needs_setup) {
-      showPage('setup');
-      return;
-    }
-  } catch (_) {
-    // If the endpoint fails, fall through to auth check
-  }
+    if (data.needs_setup) { showPage('setup'); return; }
+  } catch (_) {}
   checkAuth();
 }
 
 async function checkAuth() {
   try {
     const res = await fetch('/api/me');
-    if (res.status === 401) {
-      showPage('login');
-      return;
-    }
-    if (!res.ok) {
-      showPage('login');
-      return;
-    }
+    if (!res.ok) { showPage('login'); return; }
     currentUser = await res.json();
-    showMainApp();
+    showApp();
   } catch (_) {
     showPage('login');
   }
@@ -1468,12 +844,10 @@ async function handleSetup() {
   const password = document.getElementById('setupPassword').value;
   const confirm  = document.getElementById('setupConfirm').value;
   const errEl    = document.getElementById('setupError');
-
   errEl.textContent = '';
   if (!username) { errEl.textContent = 'Username is required.'; return; }
   if (!password) { errEl.textContent = 'Password is required.'; return; }
   if (password !== confirm) { errEl.textContent = 'Passwords do not match.'; return; }
-
   document.getElementById('setupBtn').disabled = true;
   try {
     const res = await fetch('/api/setup', {
@@ -1484,7 +858,7 @@ async function handleSetup() {
     const data = await res.json();
     if (!res.ok) { errEl.textContent = data.error || 'Setup failed.'; return; }
     currentUser = data;
-    showMainApp();
+    showApp();
   } catch (e) {
     errEl.textContent = 'Network error: ' + e.message;
   } finally {
@@ -1496,11 +870,9 @@ async function handleLogin() {
   const username = document.getElementById('loginUsername').value.trim();
   const password = document.getElementById('loginPassword').value;
   const errEl    = document.getElementById('loginError');
-
   errEl.textContent = '';
   if (!username) { errEl.textContent = 'Username is required.'; return; }
   if (!password) { errEl.textContent = 'Password is required.'; return; }
-
   document.getElementById('loginBtn').disabled = true;
   try {
     const res = await fetch('/api/auth/login', {
@@ -1511,7 +883,7 @@ async function handleLogin() {
     const data = await res.json();
     if (!res.ok) { errEl.textContent = data.error || 'Login failed.'; return; }
     currentUser = data;
-    showMainApp();
+    showApp();
   } catch (e) {
     errEl.textContent = 'Network error: ' + e.message;
   } finally {
@@ -1519,32 +891,18 @@ async function handleLogin() {
   }
 }
 
-async function handleLogout() {
-  try {
-    await fetch('/api/auth/logout', { method: 'POST' });
-  } catch (_) {}
-  stopPolling();
-  stopJobGraphPolling();
+async function doLogout() {
+  try { await fetch('/api/auth/logout', { method: 'POST' }); } catch (_) {}
+  clearInterval(pollTimer);
+  stopLogStream();
   currentUser = null;
-  runs = [];
-  selectedId = null;
-  document.getElementById('runList').innerHTML = '<div class="run-list-empty">Loading&hellip;</div>';
-  document.getElementById('detailHeader').classList.add('hidden');
-  document.getElementById('logOutput').textContent = '';
-  document.getElementById('emptyState').style.display = '';
-  document.getElementById('noRunState').style.display = 'none';
-  hideJobGraph();
+  document.getElementById('app').classList.remove('visible');
   checkSetup();
 }
-
-// ─── Page routing ─────────────────────────────────────────────────────────────
 
 function showPage(page) {
   document.getElementById('setupPage').classList.toggle('hidden', page !== 'setup');
   document.getElementById('loginPage').classList.toggle('hidden', page !== 'login');
-  document.getElementById('appHeader').style.display = (page === 'main') ? '' : 'none';
-  document.getElementById('appBody').style.display   = (page === 'main') ? '' : 'none';
-
   if (page === 'login') {
     document.getElementById('loginUsername').value = '';
     document.getElementById('loginPassword').value = '';
@@ -1559,864 +917,741 @@ function showPage(page) {
   }
 }
 
-function showMainApp() {
-  showPage('main');
+function showApp() {
+  document.getElementById('setupPage').classList.add('hidden');
+  document.getElementById('loginPage').classList.add('hidden');
   document.getElementById('headerUsername').textContent = currentUser ? currentUser.username : '';
-  // Show Users tab for admins only
-  document.getElementById('usersTabBtn').style.display =
-    (currentUser && currentUser.role === 'admin') ? '' : 'none';
-  startPolling();
-  fetchRuns();
+  document.getElementById('app').classList.add('visible');
+  populateSidebar();
+  route();
 }
 
-// ─── Polling ──────────────────────────────────────────────────────────────────
+// ── Sidebar ───────────────────────────────────────────────────────────────────
 
-function startPolling() {
-  stopPolling();
-  pollIntervalId = setInterval(fetchRuns, 5000);
-  metaIntervalId = setInterval(async () => {
-    if (!selectedId) return;
-    const run = runs.find(r => r.id === selectedId);
-    if (!run || isTerminal(run.status)) return;
-    await refreshSelectedRun(selectedId);
-    const dr = runs.find(r => r.id === selectedId);
-    if (dr) document.getElementById('detailDuration').textContent = formatDuration(dr);
-  }, 5000);
-  durationIntervalId = setInterval(() => {
-    document.querySelectorAll('.run-item').forEach(el => {
-      const id = el.dataset.id;
-      const run = runs.find(r => r.id === id);
-      if (!run || isTerminal(run.status)) return;
-      const durEl = el.querySelector('.run-dur');
-      if (durEl) durEl.textContent = formatDuration(run);
+async function populateSidebar() {
+  const nav = document.getElementById('projectsNav');
+  try {
+    const projects = await fetch('/api/projects').then(r => r.json());
+    nav.innerHTML = projects.map(p => `
+      <div class="nav-item" data-route="#projects/${esc(p.name)}"
+           onclick="navigate('#projects/${esc(p.name)}')">${esc(p.name)}</div>
+    `).join('');
+    // Re-apply active state
+    const hash = window.location.hash || '#dashboard';
+    document.querySelectorAll('#sidebar .nav-item[data-route]').forEach(el => {
+      const r = el.dataset.route;
+      el.classList.toggle('active', hash === r || (r && r !== '#dashboard' && hash.startsWith(r)));
     });
-    if (selectedId) {
-      const run = runs.find(r => r.id === selectedId);
-      if (run && !isTerminal(run.status)) {
-        document.getElementById('detailDuration').textContent = formatDuration(run);
-      }
-    }
-  }, 1000);
+  } catch (_) {
+    nav.innerHTML = '<div style="padding:6px 16px;font-size:11px;color:var(--text-muted)">Failed to load</div>';
+  }
 }
 
-function stopPolling() {
-  if (pollIntervalId)    { clearInterval(pollIntervalId);    pollIntervalId    = null; }
-  if (metaIntervalId)    { clearInterval(metaIntervalId);    metaIntervalId    = null; }
-  if (durationIntervalId){ clearInterval(durationIntervalId);durationIntervalId= null; }
+// ── Dashboard view ────────────────────────────────────────────────────────────
+
+async function showDashboard() {
+  const ca = document.getElementById('contentArea');
+  ca.innerHTML = '<div class="view-pad"><div class="empty-notice">Loading&hellip;</div></div>';
+  await renderDashboard();
+  pollTimer = setInterval(renderDashboard, 10000);
 }
 
-// ─── Formatting ───────────────────────────────────────────────────────────────
+async function renderDashboard() {
+  let stats = {}, runs = [], projects = [];
+  try { stats    = await fetch('/api/stats').then(r => r.json()); } catch (_) {}
+  try { runs     = await fetch('/runs').then(r => r.json()); } catch (_) {}
+  try { projects = await fetch('/api/projects').then(r => r.json()); } catch (_) {}
 
-function formatDuration(run) {
-  const start = new Date(run.started_at);
-  const end = run.finished_at ? new Date(run.finished_at) : new Date();
-  const secs = Math.max(0, Math.floor((end - start) / 1000));
-  if (secs < 60) return secs + 's';
-  const m = Math.floor(secs / 60), s = secs % 60;
-  if (m < 60) return m + 'm ' + s + 's';
-  const h = Math.floor(m / 60), mm = m % 60;
-  return h + 'h ' + mm + 'm';
-}
+  // Stat cards
+  const activeColor = (stats.active_runs > 0) ? 'var(--status-running)' : 'var(--text-primary)';
+  let srColor = 'var(--text-primary)';
+  if (stats.success_rate_24h !== undefined) {
+    srColor = stats.success_rate_24h >= 80 ? 'var(--status-success)'
+            : stats.success_rate_24h < 60  ? 'var(--status-failure)'
+            : 'var(--status-queued)';
+  }
+  const srText = stats.success_rate_24h !== undefined ? Math.round(stats.success_rate_24h) + '%' : '—';
 
-function formatJobDuration(job) {
-  if (!job.started_at) return '';
-  const start = new Date(job.started_at);
-  const end = job.finished_at ? new Date(job.finished_at) : new Date();
-  const secs = Math.max(0, Math.floor((end - start) / 1000));
-  if (secs < 60) return secs + 's';
-  const m = Math.floor(secs / 60), s = secs % 60;
-  return m + 'm' + s + 's';
-}
-
-function formatAge(run) {
-  const diff = Date.now() - new Date(run.started_at).getTime();
-  const secs = Math.floor(diff / 1000);
-  if (secs < 10) return 'just now';
-  if (secs < 60) return secs + 's ago';
-  const m = Math.floor(secs / 60);
-  if (m < 60) return m + 'm ago';
-  const h = Math.floor(m / 60);
-  if (h < 24) return h + 'h ago';
-  const d = Math.floor(h / 24);
-  return d + 'd ago';
-}
-
-function shortRepo(repo) {
-  return repo.replace(/^https?:\/\/[^/]+\//, '');
-}
-
-function isTerminal(status) {
-  return status === 'success' || status === 'failure' || status === 'error' || status === 'canceled';
-}
-
-// ─── Badge ────────────────────────────────────────────────────────────────────
-
-function makeBadgeEl(status) {
-  const el = document.createElement('span');
-  el.className = 'badge ' + status;
-  el.textContent = status;
-  return el;
-}
-
-function setBadge(el, status) {
-  el.className = 'badge ' + status;
-  el.textContent = status;
-}
-
-function makeStatusDot(status) {
-  const el = document.createElement('span');
-  el.className = 'status-dot ' + status;
-  return el;
-}
-
-// ─── Run List ─────────────────────────────────────────────────────────────────
-
-function statusStripeClass(status) {
-  return 'status-' + status;
-}
-
-function renderRunItem(run) {
-  const el = document.createElement('div');
-  el.className = 'run-item ' + statusStripeClass(run.status);
-  el.dataset.id = run.id;
-  el.addEventListener('click', () => selectRun(run.id));
-  updateRunItemContent(el, run);
-  return el;
-}
-
-function updateRunItemContent(el, run) {
-  const repoDisplay = shortRepo(run.repo);
-  const sha7 = run.sha.slice(0, 7);
-  el.className = 'run-item ' + statusStripeClass(run.status);
-  if (run.id === selectedId) el.classList.add('selected');
-  el.innerHTML = `
-    <div class="row1">
-      <span class="watch-workflow">
-        ${esc(run.watch_name)}<span class="wf-sep">/</span>${esc(run.workflow_name)}
-      </span>
-      <span class="status-dot ${esc(run.status)}"></span>
-    </div>
-    <div class="row2">
-      <div class="row2-left">
-        <span class="repo-name">${esc(repoDisplay)}</span>
-        <span class="sha">@${esc(sha7)}</span>
+  const statsHtml = `
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-value">${stats.total_runs_24h ?? '—'}</div>
+        <div class="stat-label">Runs today</div>
       </div>
-      <div class="row2-right">
-        <span class="run-dur">${formatDuration(run)}</span>
-        <span>&middot;</span>
-        <span>${formatAge(run)}</span>
+      <div class="stat-card">
+        <div class="stat-value" style="color:${activeColor}">${stats.active_runs ?? '—'}</div>
+        <div class="stat-label">Active</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" style="color:${srColor}">${srText}</div>
+        <div class="stat-label">Success rate 24h</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">${stats.project_count ?? projects.length}</div>
+        <div class="stat-label">Projects</div>
       </div>
     </div>
   `;
-}
 
-function reconcileRunList(newRuns) {
-  runs = newRuns;
-  const listEl = document.getElementById('runList');
+  // Recent runs table
+  const recentRuns = runs.slice(0, 20);
+  const runsRows = recentRuns.map(r => {
+    const sha7 = (r.sha || '').slice(0, 7);
+    const dur = formatDuration(r);
+    const age = formatAge(r.started_at);
+    const cancelBtn = (!isTerminal(r.status))
+      ? `<button class="btn btn-sm btn-danger" onclick="event.stopPropagation();cancelRun('${esc(r.id)}')" title="Cancel">&#10005;</button>`
+      : '';
+    return `
+      <tr onclick="navigate('#projects/${esc(r.watch_name)}/runs/${esc(r.id)}')" style="cursor:pointer">
+        <td>${statusDotHtml(r.status)}</td>
+        <td><strong>${esc(r.watch_name)}</strong> <span class="sep">/</span> ${esc(r.workflow_name)}</td>
+        <td class="mono" style="font-size:11px;color:var(--text-secondary)">${esc(shortRepo(r.repo))} <span style="color:var(--text-muted)">@${esc(sha7)}</span></td>
+        <td style="color:var(--text-secondary)">${esc(dur)}</td>
+        <td style="color:var(--text-muted)">${esc(age)}</td>
+        <td>${cancelBtn}</td>
+      </tr>
+    `;
+  }).join('');
 
-  // Update count badge
-  document.getElementById('runsCount').textContent = newRuns.length;
+  const runsTableHtml = recentRuns.length === 0
+    ? '<div class="empty-notice">No runs yet.</div>'
+    : `<table class="runs-table">
+        <thead><tr><th></th><th>Project / Workflow</th><th>Repo @ SHA</th><th>Duration</th><th>Age</th><th></th></tr></thead>
+        <tbody>${runsRows}</tbody>
+      </table>`;
 
-  if (newRuns.length === 0) {
-    listEl.innerHTML = '<div class="run-list-empty">No runs yet.</div>';
-    return;
-  }
-
-  const existingIds = new Set();
-  listEl.querySelectorAll('.run-item').forEach(el => existingIds.add(el.dataset.id));
-
-  const newIds = new Set(newRuns.map(r => r.id));
-
-  for (let i = newRuns.length - 1; i >= 0; i--) {
-    const run = newRuns[i];
-    if (!existingIds.has(run.id)) {
-      const el = renderRunItem(run);
-      el.classList.add('new');
-      const first = listEl.querySelector('.run-item');
-      if (first) {
-        listEl.insertBefore(el, first);
-      } else {
-        listEl.appendChild(el);
-      }
-      el.addEventListener('animationend', () => el.classList.remove('new'), { once: true });
-    }
-  }
-
-  listEl.querySelectorAll('.run-item').forEach(el => {
-    const id = el.dataset.id;
-    if (!newIds.has(id)) { el.remove(); return; }
-    const run = newRuns.find(r => r.id === id);
-    if (!run) return;
-
-    // Update status dot class
-    const dot = el.querySelector('.status-dot');
-    if (dot) dot.className = 'status-dot ' + run.status;
-
-    // Update status stripe
-    el.className = 'run-item ' + statusStripeClass(run.status);
-    if (id === selectedId) el.classList.add('selected');
-
-    const durEl = el.querySelector('.run-dur');
-    if (durEl) durEl.textContent = formatDuration(run);
-  });
-}
-
-// ─── Selection ────────────────────────────────────────────────────────────────
-
-async function selectRun(id) {
-  if (selectedId === id) return;
-
-  if (activeReader) {
-    try { activeReader.cancel(); } catch (_) {}
-    activeReader = null;
-  }
-
-  stopJobGraphPolling();
-  selectedJobBox = null;
-
-  selectedId = id;
-  tailEnabled = true;
-
-  document.querySelectorAll('.run-item').forEach(el => {
-    el.classList.toggle('selected', el.dataset.id === id);
-  });
-
-  const run = runs.find(r => r.id === id);
-  if (!run) return;
-
-  updateDetailHeader(run);
-
-  const logEl = document.getElementById('logOutput');
-  logEl.textContent = '';
-  document.getElementById('emptyState').style.display = 'none';
-  document.getElementById('noRunState').style.display = 'none';
-  document.getElementById('tailIndicator').classList.remove('visible');
-
-  // Show job graph
-  showJobGraph();
-  loadJobGraph(run);
-
-  closeSidebar();
-  streamLog(id, logEl);
-}
-
-function updateDetailHeader(run) {
-  const header = document.getElementById('detailHeader');
-  header.classList.remove('hidden');
-
-  setBadge(document.getElementById('detailBadge'), run.status);
-
-  const wwEl = document.getElementById('detailWatchWf');
-  wwEl.innerHTML = `<span>${esc(run.watch_name)}</span> <span style="color:var(--text-muted)">/</span> <span class="wf-part">${esc(run.workflow_name)}</span>`;
-
-  const metaEl = document.getElementById('detailMeta');
-  const repoShort = shortRepo(run.repo);
-  const sha7 = run.sha.slice(0, 7);
-  const ghCommitUrl = 'https://github.com/' + repoShort + '/commit/' + run.sha;
-  metaEl.innerHTML =
-    `<span>${esc(repoShort)}</span>` +
-    `<span class="sep">@</span>` +
-    `<a class="sha-mono" href="${esc(ghCommitUrl)}" target="_blank" rel="noopener">${esc(sha7)}</a>` +
-    `<a class="gh-link" href="${esc(ghCommitUrl)}" target="_blank" rel="noopener" title="View on GitHub">&#10138;</a>` +
-    `<span class="sep">&middot;</span>` +
-    `<span>started ${formatAge(run)}</span>`;
-
-  document.getElementById('detailDuration').textContent = formatDuration(run);
-}
-
-// ─── Log Streaming ────────────────────────────────────────────────────────────
-
-async function streamLog(runId, logEl) {
-  let resp;
-  try {
-    resp = await fetch('/runs/' + runId + '/log');
-  } catch (e) {
-    logEl.textContent = 'Failed to load log: ' + e.message;
-    return;
-  }
-
-  if (!resp.ok) {
-    logEl.textContent = 'Log not available (HTTP ' + resp.status + ')';
-    return;
-  }
-
-  const reader = resp.body.getReader();
-  activeReader = reader;
-  const decoder = new TextDecoder();
-
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      if (selectedId !== runId) break;
-      logEl.textContent += decoder.decode(value, { stream: true });
-      if (tailEnabled) {
-        logEl.scrollTop = logEl.scrollHeight;
-      }
-    }
-  } catch (_) {
-    // Stream cancelled or errored
-  } finally {
-    activeReader = null;
-  }
-
-  if (selectedId === runId) {
-    refreshSelectedRun(runId);
-  }
-}
-
-async function refreshSelectedRun(id) {
-  try {
-    const run = await fetch('/runs/' + id).then(r => r.json());
-    const idx = runs.findIndex(r => r.id === id);
-    if (idx !== -1) runs[idx] = run;
-    updateDetailHeader(run);
-    const itemEl = document.querySelector('.run-item[data-id="' + id + '"]');
-    if (itemEl) updateRunItemContent(itemEl, run);
-  } catch (_) {}
-}
-
-// ─── Auto-refresh ─────────────────────────────────────────────────────────────
-
-async function fetchRuns() {
-  try {
-    const data = await fetch('/runs').then(r => r.json());
-    reconcileRunList(data);
-
-    if (selectedId === null && data.length > 0) {
-      selectRun(data[0].id);
-    } else if (selectedId === null && data.length === 0) {
-      // Show no-run hint
-      document.getElementById('emptyState').style.display = '';
-      document.getElementById('noRunState').style.display = 'none';
-    }
-
-    document.getElementById('liveIndicator').classList.add('active');
-  } catch (_) {
-    document.getElementById('liveIndicator').classList.remove('active');
-  }
-}
-
-// ─── Tail toggle ─────────────────────────────────────────────────────────────
-
-const logEl = document.getElementById('logOutput');
-logEl.addEventListener('scroll', () => {
-  const atBottom = logEl.scrollHeight - logEl.scrollTop - logEl.clientHeight < 40;
-  if (atBottom) {
-    tailEnabled = true;
-    document.getElementById('tailIndicator').classList.remove('visible');
-  } else {
-    tailEnabled = false;
-    if (selectedId) {
-      const run = runs.find(r => r.id === selectedId);
-      if (run && !isTerminal(run.status)) {
-        document.getElementById('tailIndicator').classList.add('visible');
-      }
-    }
-  }
-});
-
-function resumeTail() {
-  tailEnabled = true;
-  document.getElementById('tailIndicator').classList.remove('visible');
-  logEl.scrollTop = logEl.scrollHeight;
-}
-
-// ─── Keyboard navigation ──────────────────────────────────────────────────────
-
-document.addEventListener('keydown', e => {
-  if (e.metaKey || e.ctrlKey || e.altKey) return;
-
-  // Close modals on Escape regardless of focus
-  if (e.key === 'Escape') {
-    if (!document.getElementById('yamlModalOverlay').classList.contains('hidden')) {
-      closeYamlModal();
-      return;
-    }
-    if (!document.getElementById('wfModalOverlay').classList.contains('hidden')) {
-      closeWfModal();
-      return;
-    }
-    if (!document.getElementById('settingsOverlay').classList.contains('hidden')) {
-      closeSettings();
-      return;
-    }
-  }
-
-  if (document.activeElement !== document.body) return;
-
-  const listEl = document.getElementById('runList');
-  const items = Array.from(listEl.querySelectorAll('.run-item'));
-  if (items.length === 0) return;
-
-  const currentIdx = items.findIndex(el => el.dataset.id === selectedId);
-
-  switch (e.key) {
-    case 'j': {
-      e.preventDefault();
-      const next = currentIdx < items.length - 1 ? currentIdx + 1 : currentIdx;
-      if (next !== currentIdx) selectRun(items[next].dataset.id);
-      items[next].scrollIntoView({ block: 'nearest' });
-      break;
-    }
-    case 'k': {
-      e.preventDefault();
-      const prev = currentIdx > 0 ? currentIdx - 1 : 0;
-      if (prev !== currentIdx) selectRun(items[prev].dataset.id);
-      items[prev].scrollIntoView({ block: 'nearest' });
-      break;
-    }
-    case 'g': {
-      e.preventDefault();
-      selectRun(items[0].dataset.id);
-      listEl.scrollTop = 0;
-      break;
-    }
-    case 'G': {
-      e.preventDefault();
-      selectRun(items[items.length - 1].dataset.id);
-      listEl.scrollTop = listEl.scrollHeight;
-      break;
-    }
-    case 't': {
-      e.preventDefault();
-      tailEnabled = !tailEnabled;
-      const ind = document.getElementById('tailIndicator');
-      if (tailEnabled) {
-        ind.classList.remove('visible');
-        logEl.scrollTop = logEl.scrollHeight;
-      } else {
-        if (selectedId) {
-          const run = runs.find(r => r.id === selectedId);
-          if (run && !isTerminal(run.status)) ind.classList.add('visible');
-        }
-      }
-      break;
-    }
-  }
-});
-
-// ─── Responsive sidebar ───────────────────────────────────────────────────────
-
-function closeSidebar() {
-  if (window.innerWidth <= 900) {
-    document.getElementById('sidebar').classList.remove('open');
-  }
-}
-
-document.getElementById('backBtn').addEventListener('click', () => {
-  document.getElementById('sidebar').classList.add('open');
-});
-
-// ─── Settings modal ───────────────────────────────────────────────────────────
-
-function openSettings() {
-  document.getElementById('settingsOverlay').classList.remove('hidden');
-  switchTab('watches');
-  loadWatches();
-  if (currentUser && currentUser.role === 'admin') {
-    loadUsers();
-  }
-}
-
-function closeSettings() {
-  document.getElementById('settingsOverlay').classList.add('hidden');
-  hideWatchForm();
-}
-
-function handleOverlayClick(e) {
-  if (e.target === document.getElementById('settingsOverlay')) {
-    closeSettings();
-  }
-}
-
-function switchTab(tabName) {
-  document.querySelectorAll('.tab-btn').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.tab === tabName);
-  });
-  document.querySelectorAll('.tab-pane').forEach(pane => {
-    pane.classList.toggle('active', pane.id === 'tab-' + tabName);
-  });
-}
-
-// ─── Watches ──────────────────────────────────────────────────────────────────
-
-async function loadWatches() {
-  const listEl = document.getElementById('watchList');
-  listEl.innerHTML = '<div class="empty-notice">Loading&hellip;</div>';
-  try {
-    const res = await fetch('/api/watches');
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const watches = await res.json();
-    renderWatchList(watches);
-  } catch (e) {
-    listEl.innerHTML = '<div class="empty-notice" style="color:var(--status-failure)">Failed to load watches: ' + esc(e.message) + '</div>';
-  }
-}
-
-function renderWatchList(watches) {
-  const listEl = document.getElementById('watchList');
-  wfDataCache = {};
-  if (!watches || watches.length === 0) {
-    listEl.innerHTML = '<div class="empty-notice">No watches configured.</div>';
-    return;
-  }
-  listEl.innerHTML = '';
-  watches.forEach(w => {
-    (w.workflows || []).forEach(wf => {
-      wfDataCache[w.name + '\x00' + wf.name] = wf;
-    });
-    listEl.appendChild(makeWatchCard(w));
-  });
-}
-
-function makeWatchCard(w) {
-  const card = document.createElement('div');
-  card.className = 'watch-card';
-  card.dataset.watchName = w.name;
-
-  const trigger = w.branch ? 'branch: ' + w.branch : (w.pr ? 'PR #' + w.pr : '');
-  const events = (w.on_events || []).join(', ');
-  const wfCount = (w.workflows || []).length;
-
-  card.innerHTML = `
-    <div class="watch-card-header" onclick="toggleWatchCard(this.closest('.watch-card'))">
-      <span class="watch-expand-icon">&#9654;</span>
-      <div class="watch-card-info">
-        <div class="watch-card-name">${esc(w.name)}</div>
-        <div class="watch-card-sub">${esc(w.repo)}${trigger ? ' &middot; ' + esc(trigger) : ''}${events ? ' &middot; ' + esc(events) : ''} &middot; ${wfCount} workflow${wfCount !== 1 ? 's' : ''}</div>
-      </div>
-      <div class="watch-card-actions" onclick="event.stopPropagation()">
-        <button class="btn btn-icon" title="Edit" onclick="showEditWatchForm('${esc(w.name)}')">&#9998;</button>
-        <button class="btn btn-icon btn-danger" title="Delete" onclick="deleteWatch('${esc(w.name)}')">&#10005;</button>
-      </div>
-    </div>
-    <div class="watch-card-body">
-      <div>
-        <div class="form-section-label" style="margin-bottom:6px">Workflows</div>
-        <div class="wf-list" id="wfl-${esc(w.name)}">
-          ${renderWorkflowItems(w)}
+  // Project health cards
+  const projectCards = projects.map(p => {
+    const projectRuns = runs.filter(r => r.watch_name === p.name);
+    const lastRun = projectRuns[0];
+    const status = lastRun ? lastRun.status : null;
+    const statusHtml = status
+      ? `${statusDotHtml(status)} <span style="font-size:11px;color:var(--text-secondary)">${esc(status)}</span>`
+      : '<span style="font-size:11px;color:var(--text-muted)">no runs</span>';
+    const wfCount = (p.workflows || []).length;
+    const lastAge = lastRun ? formatAge(lastRun.started_at) : null;
+    return `
+      <div class="project-card" onclick="navigate('#projects/${esc(p.name)}')">
+        <div class="project-card-header">
+          <span class="project-name">${esc(p.name)}</span>
+          <span style="display:flex;align-items:center;gap:5px">${statusHtml}</span>
         </div>
-        <button class="btn" style="margin-top:8px;font-size:11px" onclick="showAddWfModal('${esc(w.name)}')">+ Add workflow</button>
+        <div class="project-meta">${esc(shortRepo(p.repo))}${p.branch ? ' &middot; branch: ' + esc(p.branch) : ''}</div>
+        <div class="project-footer">${wfCount} workflow${wfCount !== 1 ? 's' : ''}${lastAge ? ' &middot; last run ' + esc(lastAge) : ''}</div>
+      </div>
+    `;
+  }).join('');
+
+  document.getElementById('contentArea').innerHTML = `
+    <div class="view-pad">
+      ${statsHtml}
+      <div class="dashboard-grid">
+        <div>
+          <div class="section-header">
+            <span class="section-title">Recent Runs</span>
+          </div>
+          ${runsTableHtml}
+        </div>
+        <div>
+          <div class="section-header">
+            <span class="section-title">Projects</span>
+          </div>
+          ${projects.length === 0
+            ? '<div class="empty-notice">No projects yet. <a href="#" onclick="navigate(\'#projects\');return false" style="color:var(--accent)">Add one.</a></div>'
+            : projectCards}
+        </div>
       </div>
     </div>
   `;
-  return card;
+
+  // Update live indicator
+  document.getElementById('liveIndicator').classList.add('active');
 }
 
-function renderWorkflowItems(w) {
-  if (!w.workflows || w.workflows.length === 0) {
-    return '<div class="empty-notice" style="text-align:left;padding:4px 0">No workflows.</div>';
-  }
-  return w.workflows.map(wf => `
-    <div class="wf-item">
-      <div class="wf-item-info">
-        <div class="wf-item-name">${esc(wf.name)}</div>
-        <div class="wf-item-sub">${esc(wf.path)}${wf.runner_image ? ' &middot; ' + esc(wf.runner_image) : ''}</div>
+// ── Projects list view ────────────────────────────────────────────────────────
+
+async function showProjectsList() {
+  const ca = document.getElementById('contentArea');
+  ca.innerHTML = '<div class="view-pad"><div class="empty-notice">Loading&hellip;</div></div>';
+
+  let projects = [];
+  try { projects = await fetch('/api/projects').then(r => r.json()); } catch (_) {}
+
+  const newProjectFormHtml = `
+    <div class="inline-form hidden" id="newProjectForm">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Name *</label>
+          <input class="form-input" type="text" id="npName" placeholder="my-project">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Repo *</label>
+          <input class="form-input" type="text" id="npRepo" placeholder="owner/repo">
+        </div>
       </div>
-      <button class="btn btn-icon" title="Edit YAML" onclick="openYamlEditor('${esc(w.name)}', '${esc(wf.name)}')" style="font-size:11px;padding:4px 7px">YAML</button>
-      <button class="btn btn-icon" title="Edit" onclick="showEditWfModalByName('${esc(w.name)}', '${esc(wf.name)}')">&#9998;</button>
-      <button class="btn btn-icon btn-danger" title="Delete" onclick="deleteWorkflow('${esc(w.name)}', '${esc(wf.name)}')">&#10005;</button>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Trigger</label>
+          <div class="radio-group">
+            <label><input type="radio" name="npTrigger" value="branch" checked onchange="toggleNpTrigger()"> Branch</label>
+            <label><input type="radio" name="npTrigger" value="pr" onchange="toggleNpTrigger()"> PR number</label>
+          </div>
+        </div>
+      </div>
+      <div class="form-row" id="npBranchRow">
+        <div class="form-group">
+          <label class="form-label">Branch</label>
+          <input class="form-input" type="text" id="npBranch" placeholder="main">
+        </div>
+      </div>
+      <div class="form-row hidden" id="npPrRow">
+        <div class="form-group">
+          <label class="form-label">PR number</label>
+          <input class="form-input" type="number" id="npPr" placeholder="42">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Events</label>
+          <div class="checkbox-group">
+            <label><input type="checkbox" id="npEventPush" checked> push</label>
+            <label><input type="checkbox" id="npEventPR"> pull_request</label>
+          </div>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn" onclick="document.getElementById('newProjectForm').classList.add('hidden')">Cancel</button>
+        <button class="btn btn-primary" onclick="submitNewProject()">Create project</button>
+      </div>
+      <div class="error-msg" id="npError"></div>
     </div>
-  `).join('');
+  `;
+
+  const cards = projects.map(p => {
+    const wfCount = (p.workflows || []).length;
+    return `
+      <div class="project-card" onclick="navigate('#projects/${esc(p.name)}')">
+        <div class="project-card-header">
+          <span class="project-name">${esc(p.name)}</span>
+          <span style="font-size:11px;color:var(--text-muted)">${wfCount} workflow${wfCount !== 1 ? 's' : ''}</span>
+        </div>
+        <div class="project-meta">${esc(shortRepo(p.repo))}${p.branch ? ' &middot; branch: ' + esc(p.branch) : ''}${p.pr ? ' &middot; PR #' + esc(p.pr) : ''}</div>
+        <div class="project-footer" style="color:var(--text-muted)">${(p.on_events || []).join(', ')}</div>
+      </div>
+    `;
+  }).join('');
+
+  ca.innerHTML = `
+    <div class="view-pad">
+      <div class="section-header">
+        <span class="section-title">Projects</span>
+        <button class="btn btn-primary" onclick="document.getElementById('newProjectForm').classList.remove('hidden');document.getElementById('npName').focus()">&#65291; New project</button>
+      </div>
+      ${newProjectFormHtml}
+      ${projects.length === 0 ? '<div class="empty-notice">No projects configured.</div>' : cards}
+    </div>
+  `;
 }
 
-function toggleWatchCard(card) {
-  card.classList.toggle('expanded');
+function toggleNpTrigger() {
+  const val = document.querySelector('input[name="npTrigger"]:checked')?.value;
+  document.getElementById('npBranchRow')?.classList.toggle('hidden', val !== 'branch');
+  document.getElementById('npPrRow')?.classList.toggle('hidden', val !== 'pr');
 }
 
-// Watch form
-
-function showAddWatchForm() {
-  editingWatchName = null;
-  document.getElementById('wfName').value = '';
-  document.getElementById('wfRepo').value = '';
-  document.getElementById('wfBranch').value = '';
-  document.getElementById('wfPr').value = '';
-  document.getElementById('wfEventPush').checked = true;
-  document.getElementById('wfEventPR').checked = false;
-  document.querySelector('input[name="wfTrigger"][value="branch"]').checked = true;
-  updateTriggerFields();
-  document.getElementById('watchFormSubmit').textContent = 'Add watch';
-  document.getElementById('watchFormError').textContent = '';
-  document.getElementById('watchForm').classList.remove('hidden');
-  document.getElementById('wfName').focus();
-}
-
-function showEditWatchForm(name) {
-  // Find watch data
-  fetch('/api/watches').then(r => r.json()).then(watches => {
-    const w = watches.find(x => x.name === name);
-    if (!w) return;
-    editingWatchName = name;
-    document.getElementById('wfName').value = w.name;
-    document.getElementById('wfRepo').value = w.repo;
-    if (w.pr) {
-      document.querySelector('input[name="wfTrigger"][value="pr"]').checked = true;
-      document.getElementById('wfPr').value = w.pr;
-      document.getElementById('wfBranch').value = '';
-    } else {
-      document.querySelector('input[name="wfTrigger"][value="branch"]').checked = true;
-      document.getElementById('wfBranch').value = w.branch || '';
-      document.getElementById('wfPr').value = '';
-    }
-    updateTriggerFields();
-    const evts = w.on_events || [];
-    document.getElementById('wfEventPush').checked = evts.includes('push');
-    document.getElementById('wfEventPR').checked   = evts.includes('pull_request');
-    document.getElementById('watchFormSubmit').textContent = 'Save watch';
-    document.getElementById('watchFormError').textContent = '';
-    document.getElementById('watchForm').classList.remove('hidden');
-    document.getElementById('wfName').focus();
-  });
-}
-
-function hideWatchForm() {
-  document.getElementById('watchForm').classList.add('hidden');
-  editingWatchName = null;
-}
-
-function updateTriggerFields() {
-  const val = document.querySelector('input[name="wfTrigger"]:checked').value;
-  document.getElementById('wfBranchRow').classList.toggle('hidden', val !== 'branch');
-  document.getElementById('wfPrRow').classList.toggle('hidden', val !== 'pr');
-}
-
-async function submitWatchForm() {
-  const name   = document.getElementById('wfName').value.trim();
-  const repo   = document.getElementById('wfRepo').value.trim();
-  const trigger= document.querySelector('input[name="wfTrigger"]:checked').value;
-  const branch = document.getElementById('wfBranch').value.trim();
-  const pr     = parseInt(document.getElementById('wfPr').value, 10);
-  const errEl  = document.getElementById('watchFormError');
-
+async function submitNewProject() {
+  const name   = document.getElementById('npName').value.trim();
+  const repo   = document.getElementById('npRepo').value.trim();
+  const trigger= document.querySelector('input[name="npTrigger"]:checked')?.value;
+  const branch = document.getElementById('npBranch')?.value.trim();
+  const pr     = parseInt(document.getElementById('npPr')?.value, 10);
+  const errEl  = document.getElementById('npError');
   errEl.textContent = '';
   if (!name) { errEl.textContent = 'Name is required.'; return; }
   if (!repo)  { errEl.textContent = 'Repo is required.'; return; }
 
   const events = [];
-  if (document.getElementById('wfEventPush').checked) events.push('push');
-  if (document.getElementById('wfEventPR').checked)   events.push('pull_request');
+  if (document.getElementById('npEventPush')?.checked) events.push('push');
+  if (document.getElementById('npEventPR')?.checked)   events.push('pull_request');
 
   const body = { name, repo, on_events: events };
   if (trigger === 'branch' && branch) body.branch = branch;
   if (trigger === 'pr' && !isNaN(pr)) body.pr = pr;
 
-  const isEdit = editingWatchName !== null;
   try {
-    const url = isEdit ? '/api/watches/' + encodeURIComponent(editingWatchName) : '/api/watches';
-    const res = await fetch(url, {
-      method: isEdit ? 'PUT' : 'POST',
+    const res = await fetch('/api/projects', {
+      method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify(body),
     });
     const data = await res.json();
-    if (!res.ok) { errEl.textContent = data.error || 'Failed to save watch.'; return; }
-    hideWatchForm();
-    loadWatches();
+    if (!res.ok) { errEl.textContent = data.error || 'Failed to create project.'; return; }
+    populateSidebar();
+    navigate('#projects/' + encodeURIComponent(name));
   } catch (e) {
     errEl.textContent = 'Network error: ' + e.message;
   }
 }
 
-async function deleteWatch(name) {
-  if (!confirm('Delete watch "' + name + '"? This cannot be undone.')) return;
+// ── Project detail view ───────────────────────────────────────────────────────
+
+async function showProject(name) {
+  const ca = document.getElementById('contentArea');
+  ca.innerHTML = '<div class="view-pad"><div class="empty-notice">Loading&hellip;</div></div>';
+
+  let project = null, runs = [];
+  try { project = await fetch('/api/projects/' + encodeURIComponent(name)).then(r => r.json()); } catch (_) {}
+  try { runs    = await fetch('/runs').then(r => r.json()); } catch (_) {}
+
+  if (!project) {
+    ca.innerHTML = '<div class="view-pad"><div class="empty-notice" style="color:var(--status-failure)">Project not found.</div></div>';
+    return;
+  }
+
+  renderProjectView(project, runs);
+  pollTimer = setInterval(async () => {
+    try {
+      const r = await fetch('/runs').then(r => r.json());
+      refreshProjectRuns(name, r);
+    } catch (_) {}
+  }, 10000);
+}
+
+function renderProjectView(project, allRuns) {
+  const ca = document.getElementById('contentArea');
+  const name = project.name;
+  const projectRuns = allRuns.filter(r => r.watch_name === name).slice(0, 50);
+
+  const trigger = project.branch ? 'branch: ' + project.branch
+                : project.pr     ? 'PR #' + project.pr
+                : '';
+  const events = (project.on_events || []).join(', ');
+
+  // Edit project form
+  const editFormHtml = `
+    <div class="inline-form hidden" id="editProjectForm">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Repo *</label>
+          <input class="form-input" type="text" id="epRepo" value="${esc(project.repo)}">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Trigger</label>
+          <div class="radio-group">
+            <label><input type="radio" name="epTrigger" value="branch" ${project.branch ? 'checked' : ''} onchange="toggleEpTrigger()"> Branch</label>
+            <label><input type="radio" name="epTrigger" value="pr"     ${project.pr     ? 'checked' : ''} onchange="toggleEpTrigger()"> PR number</label>
+          </div>
+        </div>
+      </div>
+      <div class="form-row" id="epBranchRow" ${project.pr ? 'style="display:none"' : ''}>
+        <div class="form-group">
+          <label class="form-label">Branch</label>
+          <input class="form-input" type="text" id="epBranch" value="${esc(project.branch || '')}">
+        </div>
+      </div>
+      <div class="form-row" id="epPrRow" ${!project.pr ? 'style="display:none"' : ''}>
+        <div class="form-group">
+          <label class="form-label">PR number</label>
+          <input class="form-input" type="number" id="epPr" value="${esc(project.pr || '')}">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Events</label>
+          <div class="checkbox-group">
+            <label><input type="checkbox" id="epEventPush" ${(project.on_events||[]).includes('push') ? 'checked' : ''}> push</label>
+            <label><input type="checkbox" id="epEventPR"   ${(project.on_events||[]).includes('pull_request') ? 'checked' : ''}> pull_request</label>
+          </div>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn" onclick="document.getElementById('editProjectForm').classList.add('hidden')">Cancel</button>
+        <button class="btn btn-primary" onclick="submitEditProject('${esc(name)}')">Save</button>
+      </div>
+      <div class="error-msg" id="epError"></div>
+    </div>
+  `;
+
+  // Workflows
+  const workflows = project.workflows || [];
+  const workflowsHtml = workflows.map(wf => renderWorkflowCard(name, wf)).join('');
+
+  // Add workflow form
+  const addWfFormHtml = `
+    <div class="inline-form hidden" id="addWfForm">
+      ${workflowFormFields('awf', null)}
+      <div class="form-actions">
+        <button class="btn" onclick="document.getElementById('addWfForm').classList.add('hidden')">Cancel</button>
+        <button class="btn btn-primary" onclick="submitAddWorkflow('${esc(name)}')">Add workflow</button>
+      </div>
+      <div class="error-msg" id="awfError"></div>
+    </div>
+  `;
+
+  // Runs
+  const runsHtml = renderRunRows(projectRuns, name);
+
+  ca.innerHTML = `
+    <div class="view-pad">
+      <div class="breadcrumb">
+        <a href="#" onclick="navigate('#projects');return false">Projects</a>
+        <span class="breadcrumb-sep">/</span>
+        <span>${esc(name)}</span>
+      </div>
+
+      <div class="section-header" style="margin-bottom:8px">
+        <div>
+          <div style="font-size:20px;font-weight:700;margin-bottom:4px">${esc(name)}</div>
+          <div style="font-size:12px;color:var(--text-secondary)">
+            ${esc(shortRepo(project.repo))}${trigger ? ' &middot; ' + esc(trigger) : ''}${events ? ' &middot; events: ' + esc(events) : ''}
+          </div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-sm" onclick="toggleEditProject()">Edit</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteProject('${esc(name)}')">Delete</button>
+        </div>
+      </div>
+
+      ${editFormHtml}
+
+      <div style="margin-top:24px">
+        <div class="section-header">
+          <span class="section-title">Workflows</span>
+          <button class="btn btn-sm btn-primary" onclick="document.getElementById('addWfForm').classList.remove('hidden');document.getElementById('awfName').focus()">&#65291; Add workflow</button>
+        </div>
+        <div id="workflowsList">
+          ${workflowsHtml || '<div class="empty-notice">No workflows. Add one to get started.</div>'}
+        </div>
+        ${addWfFormHtml}
+      </div>
+
+      <div style="margin-top:28px">
+        <div class="section-header">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="section-title">Runs</span>
+            <span class="count-badge" id="projectRunsCount">${projectRuns.length}</span>
+          </div>
+        </div>
+        <div id="projectRunsWrap">
+          ${runsHtml}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderWorkflowCard(projectName, wf) {
+  const timeout = wf.timeout_minutes ? wf.timeout_minutes + 'm' : 'No timeout';
+  const editFormId = 'editWf_' + wf.name.replace(/\W/g, '_');
+  const yamlPanelId = 'yaml_' + wf.name.replace(/\W/g, '_');
+
+  return `
+    <div class="workflow-card" id="wfcard_${esc(wf.name.replace(/\W/g,'_'))}">
+      <div class="workflow-header">
+        <div>
+          <div class="workflow-name">${esc(wf.name)}</div>
+          <div class="workflow-meta">${esc(wf.path)}</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px">
+            ${wf.runner_image ? 'Image: ' + esc(wf.runner_image) + ' &middot; ' : ''}Timeout: ${esc(timeout)}
+          </div>
+        </div>
+        <div class="workflow-actions">
+          <button class="btn btn-sm btn-trigger" onclick="triggerWorkflow('${esc(projectName)}','${esc(wf.name)}')">&#9654; Trigger</button>
+          <button class="btn btn-sm" onclick="toggleWfEdit('${esc(projectName)}','${esc(wf.name)}','${esc(editFormId)}')">Edit</button>
+          <button class="btn btn-sm" onclick="toggleYamlPanel('${esc(projectName)}','${esc(wf.name)}','${esc(yamlPanelId)}')">YAML</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteWorkflow('${esc(projectName)}','${esc(wf.name)}')">&#10005;</button>
+        </div>
+      </div>
+      <div class="inline-form hidden" id="${esc(editFormId)}" style="margin-top:12px;margin-bottom:0">
+        ${workflowFormFields('ewf_' + esc(wf.name.replace(/\W/g,'_')), wf)}
+        <div class="form-actions">
+          <button class="btn" onclick="document.getElementById('${esc(editFormId)}').classList.add('hidden')">Cancel</button>
+          <button class="btn btn-primary" onclick="submitEditWorkflow('${esc(projectName)}','${esc(wf.name)}','${esc('ewf_' + wf.name.replace(/\W/g,'_'))}')">Save</button>
+        </div>
+        <div class="error-msg" id="${esc(editFormId)}_err"></div>
+      </div>
+      <div class="yaml-panel hidden" id="${esc(yamlPanelId)}" style="margin-top:12px">
+        <div class="yaml-panel-header">
+          <span class="yaml-panel-title">Editing: ${esc(wf.name)}.yaml</span>
+          <div style="display:flex;gap:8px;align-items:center">
+            <span class="yaml-status" id="${esc(yamlPanelId)}_status"></span>
+            <button class="btn btn-sm btn-primary" onclick="saveYamlPanel('${esc(projectName)}','${esc(wf.name)}','${esc(yamlPanelId)}')">Save</button>
+            <button class="btn btn-sm" onclick="document.getElementById('${esc(yamlPanelId)}').classList.add('hidden')">Close</button>
+          </div>
+        </div>
+        <textarea class="yaml-editor" id="${esc(yamlPanelId)}_editor" placeholder="Loading YAML..."></textarea>
+      </div>
+    </div>
+  `;
+}
+
+function workflowFormFields(prefix, wf) {
+  const secrets = wf ? Object.entries(wf.secrets || {}) : [];
+  const envVars = wf ? Object.entries(wf.env     || {}) : [];
+  const secretRows = secrets.map(([k,v]) => kvRowHtml(k, v)).join('');
+  const envRows    = envVars.map(([k,v])  => kvRowHtml(k, v)).join('');
+  return `
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Name *</label>
+        <input class="form-input" type="text" id="${esc(prefix)}Name" placeholder="build" value="${esc(wf ? wf.name : '')}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Runner image</label>
+        <input class="form-input" type="text" id="${esc(prefix)}Image" placeholder="ubuntu:22.04" value="${esc(wf ? (wf.runner_image || '') : '')}">
+      </div>
+      <div class="form-group" style="max-width:100px">
+        <label class="form-label">Timeout (min)</label>
+        <input class="form-input" type="number" id="${esc(prefix)}Timeout" placeholder="0" value="${esc(wf ? (wf.timeout_minutes || '') : '')}">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Path *</label>
+        <input class="form-input" type="text" id="${esc(prefix)}Path" placeholder="/absolute/path/to/workflow.yaml" value="${esc(wf ? wf.path : '')}">
+      </div>
+    </div>
+    <div style="margin-bottom:10px">
+      <div class="form-section-label">Secrets</div>
+      <div id="${esc(prefix)}Secrets">${secretRows}</div>
+      <button class="btn btn-sm" style="margin-top:4px" onclick="addKvRow('${esc(prefix)}Secrets')">+ Add secret</button>
+    </div>
+    <div style="margin-bottom:10px">
+      <div class="form-section-label">Environment variables</div>
+      <div id="${esc(prefix)}Env">${envRows}</div>
+      <button class="btn btn-sm" style="margin-top:4px" onclick="addKvRow('${esc(prefix)}Env')">+ Add env var</button>
+    </div>
+  `;
+}
+
+function kvRowHtml(key, val) {
+  return `<div class="kv-row">
+    <input class="form-input kv-key" type="text" placeholder="key" value="${esc(key || '')}">
+    <input class="form-input kv-val" type="text" placeholder="value" value="${esc(val || '')}">
+    <button class="kv-remove" onclick="this.closest('.kv-row').remove()" title="Remove">&#10005;</button>
+  </div>`;
+}
+
+function addKvRow(containerId) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  const row = document.createElement('div');
+  row.className = 'kv-row';
+  row.innerHTML = `
+    <input class="form-input kv-key" type="text" placeholder="key">
+    <input class="form-input kv-val" type="text" placeholder="value">
+    <button class="kv-remove" onclick="this.closest('.kv-row').remove()" title="Remove">&#10005;</button>
+  `;
+  el.appendChild(row);
+}
+
+function readKvList(containerId) {
+  const result = {};
+  document.querySelectorAll('#' + containerId + ' .kv-row').forEach(row => {
+    const k = row.querySelector('.kv-key')?.value.trim();
+    const v = row.querySelector('.kv-val')?.value.trim();
+    if (k) result[k] = v || '';
+  });
+  return result;
+}
+
+function toggleEpTrigger() {
+  const val = document.querySelector('input[name="epTrigger"]:checked')?.value;
+  const br = document.getElementById('epBranchRow');
+  const pr = document.getElementById('epPrRow');
+  if (br) br.style.display = val === 'branch' ? '' : 'none';
+  if (pr) pr.style.display = val === 'pr'     ? '' : 'none';
+}
+
+function toggleEditProject() {
+  document.getElementById('editProjectForm')?.classList.toggle('hidden');
+}
+
+async function submitEditProject(name) {
+  const repo   = document.getElementById('epRepo').value.trim();
+  const trigger= document.querySelector('input[name="epTrigger"]:checked')?.value;
+  const branch = document.getElementById('epBranch')?.value.trim();
+  const pr     = parseInt(document.getElementById('epPr')?.value, 10);
+  const errEl  = document.getElementById('epError');
+  errEl.textContent = '';
+  if (!repo) { errEl.textContent = 'Repo is required.'; return; }
+
+  const events = [];
+  if (document.getElementById('epEventPush')?.checked) events.push('push');
+  if (document.getElementById('epEventPR')?.checked)   events.push('pull_request');
+
+  const body = { name, repo, on_events: events };
+  if (trigger === 'branch' && branch) body.branch = branch;
+  if (trigger === 'pr' && !isNaN(pr)) body.pr = pr;
+
   try {
-    const res = await fetch('/api/watches/' + encodeURIComponent(name), { method: 'DELETE' });
-    if (!res.ok) {
-      const d = await res.json().catch(() => ({}));
-      alert('Failed to delete: ' + (d.error || 'HTTP ' + res.status));
-      return;
-    }
-    loadWatches();
+    const res = await fetch('/api/projects/' + encodeURIComponent(name), {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (!res.ok) { errEl.textContent = data.error || 'Failed.'; return; }
+    toast('Project saved.', 'success');
+    populateSidebar();
+    showProject(name);
   } catch (e) {
-    alert('Network error: ' + e.message);
+    errEl.textContent = 'Network error: ' + e.message;
   }
 }
 
-// ─── Workflow modal ───────────────────────────────────────────────────────────
-
-function showAddWfModal(watchName) {
-  editingWfContext = { watchName, wfName: null };
-  document.getElementById('wfModalTitle').textContent = 'Add workflow';
-  document.getElementById('wfModalSubmit').textContent = 'Add workflow';
-  document.getElementById('wfmName').value  = '';
-  document.getElementById('wfmPath').value  = '';
-  document.getElementById('wfmImage').value = '';
-  document.getElementById('wfmSecrets').innerHTML = '';
-  document.getElementById('wfmEnv').innerHTML     = '';
-  document.getElementById('wfModalError').textContent = '';
-  document.getElementById('wfModalOverlay').classList.remove('hidden');
-  document.getElementById('wfmName').focus();
-}
-
-function showEditWfModalByName(watchName, wfName) {
-  const wf = wfDataCache[watchName + '\x00' + wfName] || {};
-  showEditWfModal(watchName, wfName, wf);
-}
-
-function showEditWfModal(watchName, wfName, wf) {
-  if (!wf) wf = {};
-
-  editingWfContext = { watchName, wfName };
-  document.getElementById('wfModalTitle').textContent = 'Edit workflow';
-  document.getElementById('wfModalSubmit').textContent = 'Save workflow';
-  document.getElementById('wfmName').value  = wf.name  || '';
-  document.getElementById('wfmPath').value  = wf.path  || '';
-  document.getElementById('wfmImage').value = wf.runner_image || '';
-  document.getElementById('wfModalError').textContent = '';
-
-  // Populate secrets
-  const secretsEl = document.getElementById('wfmSecrets');
-  secretsEl.innerHTML = '';
-  Object.entries(wf.secrets || {}).forEach(([k, v]) => addKvRow('wfmSecrets', k, v));
-
-  // Populate env
-  const envEl = document.getElementById('wfmEnv');
-  envEl.innerHTML = '';
-  Object.entries(wf.env || {}).forEach(([k, v]) => addKvRow('wfmEnv', k, v));
-
-  document.getElementById('wfModalOverlay').classList.remove('hidden');
-  document.getElementById('wfmName').focus();
-}
-
-function closeWfModal() {
-  document.getElementById('wfModalOverlay').classList.add('hidden');
-  editingWfContext = null;
-}
-
-function handleWfOverlayClick(e) {
-  if (e.target === document.getElementById('wfModalOverlay')) {
-    closeWfModal();
+async function deleteProject(name) {
+  if (!confirm('Delete project "' + name + '"? This cannot be undone.')) return;
+  try {
+    const res = await fetch('/api/projects/' + encodeURIComponent(name), { method: 'DELETE' });
+    if (!res.ok) { const d = await res.json().catch(()=>({})); toast(d.error || 'Failed to delete.', 'error'); return; }
+    populateSidebar();
+    navigate('#projects');
+  } catch (e) {
+    toast('Network error: ' + e.message, 'error');
   }
 }
 
-async function submitWfModal() {
-  const name  = document.getElementById('wfmName').value.trim();
-  const path  = document.getElementById('wfmPath').value.trim();
-  const image = document.getElementById('wfmImage').value.trim();
-  const errEl = document.getElementById('wfModalError');
+function toggleWfEdit(projectName, wfName, formId) {
+  document.getElementById(formId)?.classList.toggle('hidden');
+}
 
+async function submitAddWorkflow(projectName) {
+  const prefix = 'awf';
+  const name    = document.getElementById(prefix + 'Name')?.value.trim();
+  const path    = document.getElementById(prefix + 'Path')?.value.trim();
+  const image   = document.getElementById(prefix + 'Image')?.value.trim();
+  const timeout = parseInt(document.getElementById(prefix + 'Timeout')?.value, 10);
+  const errEl   = document.getElementById(prefix + 'Error');
   errEl.textContent = '';
   if (!name) { errEl.textContent = 'Name is required.'; return; }
   if (!path) { errEl.textContent = 'Path is required.'; return; }
 
-  const secrets = readKvList('wfmSecrets');
-  const env     = readKvList('wfmEnv');
-
   const body = { name, path };
   if (image) body.runner_image = image;
+  if (!isNaN(timeout) && timeout > 0) body.timeout_minutes = timeout;
+  const secrets = readKvList(prefix + 'Secrets');
+  const env     = readKvList(prefix + 'Env');
   if (Object.keys(secrets).length) body.secrets = secrets;
   if (Object.keys(env).length)     body.env     = env;
 
-  const { watchName, wfName } = editingWfContext;
-  const isEdit = wfName !== null;
-  const url = isEdit
-    ? '/api/watches/' + encodeURIComponent(watchName) + '/workflows/' + encodeURIComponent(wfName)
-    : '/api/watches/' + encodeURIComponent(watchName) + '/workflows';
-
   try {
-    const res = await fetch(url, {
-      method: isEdit ? 'PUT' : 'POST',
+    const res = await fetch('/api/projects/' + encodeURIComponent(projectName) + '/workflows', {
+      method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify(body),
     });
     const data = await res.json();
-    if (!res.ok) { errEl.textContent = data.error || 'Failed to save workflow.'; return; }
-    closeWfModal();
-    loadWatches();
+    if (!res.ok) { errEl.textContent = data.error || 'Failed.'; return; }
+    toast('Workflow added.', 'success');
+    showProject(projectName);
   } catch (e) {
     errEl.textContent = 'Network error: ' + e.message;
   }
 }
 
-async function deleteWorkflow(watchName, wfName) {
-  if (!confirm('Delete workflow "' + wfName + '" from "' + watchName + '"?')) return;
+async function submitEditWorkflow(projectName, wfName, prefix) {
+  const name    = document.getElementById(prefix + 'Name')?.value.trim();
+  const path    = document.getElementById(prefix + 'Path')?.value.trim();
+  const image   = document.getElementById(prefix + 'Image')?.value.trim();
+  const timeout = parseInt(document.getElementById(prefix + 'Timeout')?.value, 10);
+  const errId   = 'editWf_' + wfName.replace(/\W/g,'_') + '_err';
+  const errEl   = document.getElementById(errId);
+  if (errEl) errEl.textContent = '';
+  if (!name) { if (errEl) errEl.textContent = 'Name is required.'; return; }
+  if (!path) { if (errEl) errEl.textContent = 'Path is required.'; return; }
+
+  const body = { name, path };
+  if (image) body.runner_image = image;
+  if (!isNaN(timeout) && timeout > 0) body.timeout_minutes = timeout;
+  const secrets = readKvList(prefix + 'Secrets');
+  const env     = readKvList(prefix + 'Env');
+  if (Object.keys(secrets).length) body.secrets = secrets;
+  if (Object.keys(env).length)     body.env     = env;
+
   try {
     const res = await fetch(
-      '/api/watches/' + encodeURIComponent(watchName) + '/workflows/' + encodeURIComponent(wfName),
-      { method: 'DELETE' }
+      '/api/projects/' + encodeURIComponent(projectName) + '/workflows/' + encodeURIComponent(wfName),
+      { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) }
     );
-    if (!res.ok) {
-      const d = await res.json().catch(() => ({}));
-      alert('Failed to delete: ' + (d.error || 'HTTP ' + res.status));
-      return;
-    }
-    loadWatches();
+    const data = await res.json();
+    if (!res.ok) { if (errEl) errEl.textContent = data.error || 'Failed.'; return; }
+    toast('Workflow saved.', 'success');
+    showProject(projectName);
   } catch (e) {
-    alert('Network error: ' + e.message);
+    if (errEl) errEl.textContent = 'Network error: ' + e.message;
   }
 }
 
-// ─── YAML editor ─────────────────────────────────────────────────────────────
-
-async function openYamlEditor(watchName, wfName) {
-  yamlEditContext = { watchName, wfName };
-  const titleEl = document.getElementById('yamlModalTitle');
-  titleEl.textContent = 'Editing YAML \u2014 ' + watchName + ' / ' + wfName;
-
-  const loadMsg = document.getElementById('yamlLoadingMsg');
-  const textarea = document.getElementById('yamlEditorArea');
-  const actions = document.getElementById('yamlEditorActions');
-  const statusEl = document.getElementById('yamlStatus');
-
-  loadMsg.style.display = '';
-  textarea.style.display = 'none';
-  actions.style.display = 'none';
-  statusEl.textContent = '';
-  statusEl.className = 'yaml-status';
-
-  document.getElementById('yamlModalOverlay').classList.remove('hidden');
-
+async function deleteWorkflow(projectName, wfName) {
+  if (!confirm('Delete workflow "' + wfName + '"?')) return;
   try {
     const res = await fetch(
-      '/api/watches/' + encodeURIComponent(watchName) + '/workflows/' + encodeURIComponent(wfName) + '/content'
+      '/api/projects/' + encodeURIComponent(projectName) + '/workflows/' + encodeURIComponent(wfName),
+      { method: 'DELETE' }
+    );
+    if (!res.ok) { const d = await res.json().catch(()=>({})); toast(d.error || 'Failed.', 'error'); return; }
+    showProject(projectName);
+  } catch (e) {
+    toast('Network error: ' + e.message, 'error');
+  }
+}
+
+async function triggerWorkflow(projectName, wfName) {
+  try {
+    const res = await fetch(
+      '/api/projects/' + encodeURIComponent(projectName) + '/workflows/' + encodeURIComponent(wfName) + '/trigger',
+      { method: 'POST' }
+    );
+    if (!res.ok) { const d = await res.json().catch(()=>({})); toast(d.error || 'Trigger failed.', 'error'); return; }
+    toast('Run triggered: ' + wfName, 'success');
+    setTimeout(() => {
+      // Refresh runs section
+      fetch('/runs').then(r => r.json()).then(runs => refreshProjectRuns(projectName, runs)).catch(()=>{});
+    }, 800);
+  } catch (e) {
+    toast('Network error: ' + e.message, 'error');
+  }
+}
+
+async function toggleYamlPanel(projectName, wfName, panelId) {
+  const panel = document.getElementById(panelId);
+  if (!panel) return;
+  if (!panel.classList.contains('hidden')) {
+    panel.classList.add('hidden');
+    return;
+  }
+  panel.classList.remove('hidden');
+  const editor = document.getElementById(panelId + '_editor');
+  const statusEl = document.getElementById(panelId + '_status');
+  if (editor) { editor.value = 'Loading...'; editor.disabled = true; }
+  try {
+    const res = await fetch(
+      '/api/projects/' + encodeURIComponent(projectName) + '/workflows/' + encodeURIComponent(wfName) + '/content'
     );
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const text = await res.text();
-    textarea.value = text;
-    loadMsg.style.display = 'none';
-    textarea.style.display = '';
-    actions.style.display = 'flex';
-    textarea.focus();
+    if (editor) { editor.value = text; editor.disabled = false; editor.focus(); }
   } catch (e) {
-    loadMsg.textContent = 'Failed to load YAML: ' + e.message;
-    loadMsg.style.color = 'var(--status-failure)';
+    if (editor) { editor.value = 'Failed to load: ' + e.message; }
   }
 }
 
-function closeYamlModal() {
-  document.getElementById('yamlModalOverlay').classList.add('hidden');
-  yamlEditContext = null;
-}
-
-function handleYamlOverlayClick(e) {
-  if (e.target === document.getElementById('yamlModalOverlay')) {
-    closeYamlModal();
-  }
-}
-
-async function saveYaml() {
-  if (!yamlEditContext) return;
-  const { watchName, wfName } = yamlEditContext;
-  const content = document.getElementById('yamlEditorArea').value;
-  const statusEl = document.getElementById('yamlStatus');
+async function saveYamlPanel(projectName, wfName, panelId) {
+  const editor  = document.getElementById(panelId + '_editor');
+  const statusEl = document.getElementById(panelId + '_status');
+  if (!editor || !statusEl) return;
   statusEl.textContent = 'Saving\u2026';
   statusEl.className = 'yaml-status';
-
   try {
     const res = await fetch(
-      '/api/watches/' + encodeURIComponent(watchName) + '/workflows/' + encodeURIComponent(wfName) + '/content',
-      {
-        method: 'PUT',
-        headers: { 'Content-Type': 'text/plain' },
-        body: content,
-      }
+      '/api/projects/' + encodeURIComponent(projectName) + '/workflows/' + encodeURIComponent(wfName) + '/content',
+      { method: 'PUT', headers: {'Content-Type':'text/plain'}, body: editor.value }
     );
-    if (!res.ok) {
-      const d = await res.json().catch(() => ({}));
-      throw new Error(d.error || 'HTTP ' + res.status);
-    }
+    if (!res.ok) { const d = await res.json().catch(()=>({})); throw new Error(d.error || 'HTTP ' + res.status); }
     statusEl.textContent = 'Saved.';
     statusEl.className = 'yaml-status ok';
   } catch (e) {
@@ -2425,154 +1660,215 @@ async function saveYaml() {
   }
 }
 
-// ─── Key-value helpers ────────────────────────────────────────────────────────
-
-function addKvRow(listId, key, value) {
-  const listEl = document.getElementById(listId);
-  const row = document.createElement('div');
-  row.className = 'kv-row';
-  row.innerHTML = `
-    <input class="form-input kv-key" type="text" placeholder="key" value="${esc(key || '')}">
-    <input class="form-input kv-val" type="text" placeholder="value" value="${esc(value || '')}">
-    <button class="btn-remove" onclick="this.closest('.kv-row').remove()" title="Remove">&#10005;</button>
-  `;
-  listEl.appendChild(row);
-}
-
-function readKvList(listId) {
-  const result = {};
-  document.querySelectorAll('#' + listId + ' .kv-row').forEach(row => {
-    const k = row.querySelector('.kv-key').value.trim();
-    const v = row.querySelector('.kv-val').value.trim();
-    if (k) result[k] = v;
-  });
-  return result;
-}
-
-// ─── Users ────────────────────────────────────────────────────────────────────
-
-async function loadUsers() {
-  const wrap = document.getElementById('usersTableWrap');
-  wrap.innerHTML = '<div class="empty-notice">Loading&hellip;</div>';
-  try {
-    const res = await fetch('/api/users');
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const users = await res.json();
-    renderUsersTable(users);
-  } catch (e) {
-    wrap.innerHTML = '<div class="empty-notice" style="color:var(--status-failure)">Failed to load users: ' + esc(e.message) + '</div>';
-  }
-}
-
-function renderUsersTable(users) {
-  const wrap = document.getElementById('usersTableWrap');
-  if (!users || users.length === 0) {
-    wrap.innerHTML = '<div class="empty-notice">No users found.</div>';
-    return;
-  }
-  let rows = users.map(u => {
-    const isSelf = currentUser && u.id === currentUser.id;
-    const created = u.created_at ? new Date(u.created_at).toLocaleDateString() : '';
+function renderRunRows(runs, projectName) {
+  if (runs.length === 0) return '<div class="empty-notice">No runs for this project yet.</div>';
+  const rows = runs.map((r, idx) => {
+    const sha7 = (r.sha || '').slice(0, 7);
+    const cancelBtn = !isTerminal(r.status)
+      ? `<button class="btn btn-sm btn-danger" onclick="event.stopPropagation();cancelRun('${esc(r.id)}')" title="Cancel">&#10005;</button>`
+      : '';
     return `
-      <tr>
-        <td>${esc(u.username)}${isSelf ? ' <span style="font-size:10px;color:var(--text-muted)">(you)</span>' : ''}</td>
-        <td><span class="role-badge ${esc(u.role)}">${esc(u.role)}</span></td>
-        <td style="color:var(--text-muted)">${esc(created)}</td>
-        <td>
-          <div class="td-actions">
-            <button class="btn" style="font-size:11px" onclick="showChangePassword(${u.id})">Change password</button>
-            ${!isSelf ? `<button class="btn btn-danger" style="font-size:11px" onclick="deleteUser(${u.id}, '${esc(u.username)}')">Delete</button>` : ''}
-          </div>
-        </td>
+      <tr data-run-id="${esc(r.id)}" data-idx="${idx}"
+          onclick="navigate('#projects/${esc(r.watch_name)}/runs/${esc(r.id)}')" style="cursor:pointer">
+        <td>${statusDotHtml(r.status)}</td>
+        <td>${esc(r.workflow_name)} <span class="mono" style="font-size:11px;color:var(--text-muted)">@${esc(sha7)}</span></td>
+        <td style="color:var(--text-secondary)">${esc(formatDuration(r))}</td>
+        <td style="color:var(--text-muted)">${esc(formatAge(r.started_at))}</td>
+        <td>${cancelBtn}</td>
       </tr>
     `;
   }).join('');
-  wrap.innerHTML = `
-    <table class="users-table">
-      <thead>
-        <tr>
-          <th>Username</th>
-          <th>Role</th>
-          <th>Created</th>
-          <th></th>
-        </tr>
-      </thead>
+  return `
+    <table class="runs-table">
+      <thead><tr><th></th><th>Workflow @ SHA</th><th>Duration</th><th>Age</th><th></th></tr></thead>
       <tbody>${rows}</tbody>
     </table>
   `;
 }
 
-function showAddUserForm() {
-  document.getElementById('ufUsername').value = '';
-  document.getElementById('ufPassword').value = '';
-  document.getElementById('ufRole').value = 'user';
-  document.getElementById('userFormError').textContent = '';
-  document.getElementById('userForm').classList.remove('hidden');
-  document.getElementById('ufUsername').focus();
+function refreshProjectRuns(projectName, allRuns) {
+  const wrap = document.getElementById('projectRunsWrap');
+  const countEl = document.getElementById('projectRunsCount');
+  if (!wrap) return;
+  const projectRuns = allRuns.filter(r => r.watch_name === projectName).slice(0, 50);
+  if (countEl) countEl.textContent = projectRuns.length;
+  wrap.innerHTML = renderRunRows(projectRuns, projectName);
 }
 
-function hideUserForm() {
-  document.getElementById('userForm').classList.add('hidden');
-}
-
-async function submitUserForm() {
-  const username = document.getElementById('ufUsername').value.trim();
-  const password = document.getElementById('ufPassword').value;
-  const role     = document.getElementById('ufRole').value;
-  const errEl    = document.getElementById('userFormError');
-
-  errEl.textContent = '';
-  if (!username) { errEl.textContent = 'Username is required.'; return; }
-  if (!password) { errEl.textContent = 'Password is required.'; return; }
-
+async function cancelRun(runId) {
+  if (!confirm('Cancel this run?')) return;
   try {
-    const res = await fetch('/api/users', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ username, password, role }),
-    });
-    const data = await res.json();
-    if (!res.ok) { errEl.textContent = data.error || 'Failed to create user.'; return; }
-    hideUserForm();
-    loadUsers();
+    const res = await fetch('/runs/' + runId + '/cancel', { method: 'POST' });
+    if (!res.ok) { const d = await res.json().catch(()=>({})); toast(d.error || 'Failed to cancel.', 'error'); return; }
+    toast('Run cancelled.', 'success');
+    // Re-route to refresh
+    route();
   } catch (e) {
-    errEl.textContent = 'Network error: ' + e.message;
+    toast('Network error: ' + e.message, 'error');
   }
 }
 
-async function deleteUser(id, username) {
-  if (!confirm('Delete user "' + username + '"? This cannot be undone.')) return;
+// ── Run detail view ───────────────────────────────────────────────────────────
+
+async function showRunDetail(projectName, runId) {
+  const ca = document.getElementById('contentArea');
+  ca.style.overflow = 'hidden';
+  ca.style.display = 'flex';
+  ca.style.flexDirection = 'column';
+  ca.innerHTML = `
+    <div class="run-detail-wrap">
+      <div class="run-detail-header" id="runDetailHeader">
+        <div class="run-detail-header-left">
+          <div class="breadcrumb" style="margin-bottom:6px">
+            <a href="#" onclick="navigate('#projects/${esc(projectName)}');return false">${esc(projectName)}</a>
+            <span class="breadcrumb-sep">/</span>
+            <span id="runDetailTitle">Loading...</span>
+            <span id="runDetailBadge"></span>
+          </div>
+          <div class="run-detail-meta" id="runDetailMeta"></div>
+        </div>
+        <div class="run-detail-header-right" id="runDetailRight"></div>
+      </div>
+      <div class="job-graph-container" id="jobGraphContainer">
+        <div id="jobGraphInner"></div>
+      </div>
+      <div class="log-pane">
+        <div class="log-output" id="logOutput">Loading log...</div>
+        <div class="tail-indicator" id="tailIndicator" onclick="resumeTail()">&#8593; scrolled up &middot; click to resume</div>
+      </div>
+    </div>
+  `;
+
+  let run = null;
+  try { run = await fetch('/runs/' + runId).then(r => r.json()); } catch (_) {}
+
+  if (!run) {
+    document.getElementById('runDetailTitle').textContent = 'Run not found';
+    return;
+  }
+
+  updateRunDetailHeader(run);
+  setupLogScroll();
+  startLogStream(runId);
+  loadJobGraph(run);
+
+  if (!isTerminal(run.status)) {
+    pollTimer = setInterval(async () => {
+      try {
+        const updated = await fetch('/runs/' + runId).then(r => r.json());
+        updateRunDetailHeader(updated);
+        if (isTerminal(updated.status)) {
+          clearInterval(pollTimer);
+          pollTimer = null;
+        }
+      } catch (_) {}
+    }, 3000);
+  }
+}
+
+function updateRunDetailHeader(run) {
+  const titleEl = document.getElementById('runDetailTitle');
+  const badgeEl = document.getElementById('runDetailBadge');
+  const metaEl  = document.getElementById('runDetailMeta');
+  const rightEl = document.getElementById('runDetailRight');
+  if (!titleEl) return;
+
+  const sha7 = (run.sha || '').slice(0, 7);
+  const repoShort = shortRepo(run.repo);
+  const ghUrl = 'https://github.com/' + repoShort + '/commit/' + run.sha;
+
+  titleEl.textContent = run.workflow_name + ' #' + (run.id || '').slice(0, 8);
+  if (badgeEl) badgeEl.innerHTML = ' ' + badgeHtml(run.status);
+  if (metaEl) {
+    metaEl.innerHTML = `
+      <span>${esc(repoShort)}</span>
+      <span class="sep">@</span>
+      <a class="sha-mono" href="${esc(ghUrl)}" target="_blank" rel="noopener">${esc(sha7)}</a>
+      <span class="sep">&middot;</span>
+      <span>started ${esc(formatAge(run.started_at))}</span>
+      <span class="sep">&middot;</span>
+      <span id="runDetailDuration">${esc(formatDuration(run))}</span>
+    `;
+  }
+  if (rightEl) {
+    const cancelBtn = !isTerminal(run.status)
+      ? `<button class="btn btn-sm btn-danger" onclick="cancelRun('${esc(run.id)}')">&#10005; Cancel</button>`
+      : '';
+    rightEl.innerHTML = cancelBtn;
+  }
+}
+
+// ── Log streaming ─────────────────────────────────────────────────────────────
+
+function stopLogStream() {
+  if (logReader) {
+    try { logReader.cancel(); } catch (_) {}
+    logReader = null;
+  }
+}
+
+async function startLogStream(runId) {
+  const logEl = document.getElementById('logOutput');
+  if (!logEl) return;
+  logEl.textContent = '';
+  tailEnabled = true;
+
+  let resp;
   try {
-    const res = await fetch('/api/users/' + id, { method: 'DELETE' });
-    if (!res.ok) {
-      const d = await res.json().catch(() => ({}));
-      alert('Failed to delete: ' + (d.error || 'HTTP ' + res.status));
-      return;
+    resp = await fetch('/runs/' + runId + '/log');
+  } catch (e) {
+    logEl.textContent = 'Failed to load log: ' + e.message;
+    return;
+  }
+  if (!resp.ok) {
+    logEl.textContent = 'Log not available (HTTP ' + resp.status + ')';
+    return;
+  }
+
+  const reader = resp.body.getReader();
+  logReader = reader;
+  const decoder = new TextDecoder();
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      logEl.textContent += decoder.decode(value, { stream: true });
+      if (tailEnabled) logEl.scrollTop = logEl.scrollHeight;
     }
-    loadUsers();
-  } catch (e) {
-    alert('Network error: ' + e.message);
+  } catch (_) {
+    // stream cancelled
+  } finally {
+    logReader = null;
   }
 }
 
-async function showChangePassword(id) {
-  const newPass = prompt('New password:');
-  if (newPass === null) return;
-  if (!newPass.trim()) { alert('Password cannot be empty.'); return; }
-  try {
-    const res = await fetch('/api/users/' + id + '/password', {
-      method: 'PUT',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ password: newPass }),
+function setupLogScroll() {
+  // bind after DOM is ready
+  requestAnimationFrame(() => {
+    const logEl = document.getElementById('logOutput');
+    if (!logEl) return;
+    logEl.addEventListener('scroll', () => {
+      const atBottom = logEl.scrollHeight - logEl.scrollTop - logEl.clientHeight < 40;
+      if (atBottom) {
+        tailEnabled = true;
+        document.getElementById('tailIndicator')?.classList.remove('visible');
+      } else {
+        tailEnabled = false;
+        document.getElementById('tailIndicator')?.classList.add('visible');
+      }
     });
-    const data = await res.json();
-    if (!res.ok) { alert('Failed: ' + (data.error || 'HTTP ' + res.status)); return; }
-  } catch (e) {
-    alert('Network error: ' + e.message);
-  }
+  });
 }
 
-// ─── Job Graph ────────────────────────────────────────────────────────────────
+function resumeTail() {
+  tailEnabled = true;
+  document.getElementById('tailIndicator')?.classList.remove('visible');
+  const logEl = document.getElementById('logOutput');
+  if (logEl) logEl.scrollTop = logEl.scrollHeight;
+}
+
+// ── Job graph ─────────────────────────────────────────────────────────────────
 
 const BOX_W = 140, BOX_H = 44, GAP_X = 80, GAP_Y = 16, PAD = 20;
 
@@ -2586,7 +1882,6 @@ function parseWorkflowJobs(yamlText) {
     if (line.match(/^jobs\s*:/)) { inJobs = true; continue; }
     if (!inJobs) continue;
 
-    // Top-level job key (2 spaces indent, not 4+)
     const jobMatch = line.match(/^  (\w[\w-]*)\s*:/);
     if (jobMatch && !line.match(/^\s{4}/)) {
       currentJob = jobMatch[1];
@@ -2594,10 +1889,8 @@ function parseWorkflowJobs(yamlText) {
       inNeeds = false;
       continue;
     }
-
     if (!currentJob) continue;
 
-    // needs: single value or inline list
     const needsInline = line.match(/^\s+needs\s*:\s*(.+)/);
     if (needsInline) {
       const val = needsInline[1].trim();
@@ -2609,8 +1902,6 @@ function parseWorkflowJobs(yamlText) {
       inNeeds = false;
       continue;
     }
-
-    // needs: as list
     if (line.match(/^\s+needs\s*:$/)) { inNeeds = true; continue; }
     if (inNeeds && line.match(/^\s+-\s+/)) {
       jobs[currentJob].needs.push(line.replace(/^\s+-\s+/, '').replace(/['"]/g, '').trim());
@@ -2622,33 +1913,20 @@ function parseWorkflowJobs(yamlText) {
 }
 
 function topoLevels(nodeNames, deps) {
-  // deps: { name: [depName, ...] } — deps are things this node depends ON (needs)
   const levels = {};
-  const visited = new Set();
-
   function visit(name, depth) {
-    if (levels[name] !== undefined) {
-      if (depth > levels[name]) levels[name] = depth;
-    } else {
-      levels[name] = depth;
-    }
-    const children = Object.keys(deps).filter(n => (deps[n] || []).includes(name));
-    children.forEach(c => visit(c, levels[name] + 1));
+    if (levels[name] !== undefined) { if (depth > levels[name]) levels[name] = depth; }
+    else levels[name] = depth;
+    Object.keys(deps).filter(n => (deps[n] || []).includes(name)).forEach(c => visit(c, levels[name] + 1));
   }
-
-  // Find roots (no dependencies)
-  const roots = nodeNames.filter(n => !deps[n] || deps[n].length === 0);
-  roots.forEach(r => visit(r, 0));
-
-  // Any nodes not yet visited (isolated or cycles)
+  nodeNames.filter(n => !deps[n] || deps[n].length === 0).forEach(r => visit(r, 0));
   nodeNames.forEach(n => { if (levels[n] === undefined) levels[n] = 0; });
-
   return levels;
 }
 
-function statusColor(status) {
+function jobStatusColor(status) {
   const map = {
-    pending:  { border: 'var(--border)',         bg: 'var(--bg-elevated)',      text: 'var(--text-secondary)' },
+    pending:  { border: 'var(--border)',         bg: 'var(--bg-elevated)',       text: 'var(--text-secondary)' },
     running:  { border: 'var(--status-running)',  bg: 'var(--status-running-bg)', text: 'var(--status-running)' },
     success:  { border: 'var(--status-success)',  bg: 'var(--status-success-bg)', text: 'var(--status-success)' },
     failure:  { border: 'var(--status-failure)',  bg: 'var(--status-failure-bg)', text: 'var(--status-failure)' },
@@ -2660,16 +1938,10 @@ function statusColor(status) {
   return map[status] || map['pending'];
 }
 
-function statusDotFill(status) {
+function jobStatusDotFill(status) {
   const map = {
-    pending: '#444444',
-    running: '#3b82f6',
-    success: '#22c55e',
-    failure: '#ef4444',
-    skipped: '#444444',
-    queued:  '#ca8a04',
-    error:   '#f97316',
-    canceled:'#6b7280',
+    pending:'#444444', running:'#3b82f6', success:'#22c55e', failure:'#ef4444',
+    skipped:'#444444', queued:'#ca8a04', error:'#f97316', canceled:'#6b7280',
   };
   return map[status] || '#444444';
 }
@@ -2679,37 +1951,18 @@ function renderJobGraph(containerId, jobs, workflowJobs) {
   if (!container) return;
   container.innerHTML = '';
 
-  // Build node list
-  let nodeNames = [];
-  let deps = {}; // name -> [needs...]
-
+  let nodeNames = [], deps = {};
   if (workflowJobs && Object.keys(workflowJobs).length > 0) {
     nodeNames = Object.keys(workflowJobs);
-    deps = {};
     nodeNames.forEach(n => { deps[n] = workflowJobs[n].needs || []; });
   } else if (jobs && jobs.length > 0) {
     nodeNames = jobs.map(j => j.job_name);
-    deps = {};
     nodeNames.forEach(n => { deps[n] = []; });
   } else {
-    // Fallback: show run status box
-    const run = selectedId ? runs.find(r => r.id === selectedId) : null;
-    const label = run ? (run.workflow_name || 'workflow') : 'workflow';
-    const status = run ? run.status : 'pending';
-    const c = statusColor(status);
-    const svgNS = 'http://www.w3.org/2000/svg';
-    const svg = document.createElementNS(svgNS, 'svg');
-    svg.setAttribute('width', BOX_W + PAD * 2);
-    svg.setAttribute('height', BOX_H + PAD * 2);
-    svg.setAttribute('viewBox', '0 0 ' + (BOX_W + PAD * 2) + ' ' + (BOX_H + PAD * 2));
-    appendJobBox(svg, PAD, PAD, label, status, '', false, null, svgNS, c);
-    container.appendChild(svg);
     return;
   }
 
   const levels = topoLevels(nodeNames, deps);
-
-  // Group by level
   const byLevel = {};
   nodeNames.forEach(n => {
     const lv = levels[n] || 0;
@@ -2717,10 +1970,10 @@ function renderJobGraph(containerId, jobs, workflowJobs) {
     byLevel[lv].push(n);
   });
   const maxLevel = Math.max(...Object.keys(byLevel).map(Number));
-  const maxColHeight = Math.max(...Object.values(byLevel).map(arr => arr.length));
+  const maxColH  = Math.max(...Object.values(byLevel).map(a => a.length));
 
   const totalW = (maxLevel + 1) * (BOX_W + GAP_X) - GAP_X + PAD * 2;
-  const totalH = maxColHeight * (BOX_H + GAP_Y) - GAP_Y + PAD * 2;
+  const totalH = maxColH * (BOX_H + GAP_Y) - GAP_Y + PAD * 2;
 
   const svgNS = 'http://www.w3.org/2000/svg';
   const svg = document.createElementNS(svgNS, 'svg');
@@ -2729,45 +1982,7 @@ function renderJobGraph(containerId, jobs, workflowJobs) {
   svg.setAttribute('viewBox', '0 0 ' + totalW + ' ' + totalH);
   svg.style.display = 'block';
 
-  // Compute positions
-  const positions = {}; // name -> {x, y, cx, cy}
-  Object.keys(byLevel).forEach(lv => {
-    const col = byLevel[lv];
-    const colH = col.length * BOX_H + (col.length - 1) * GAP_Y;
-    const startY = PAD + (maxColHeight * (BOX_H + GAP_Y) - GAP_Y - colH) / 2;
-    col.forEach((name, idx) => {
-      const x = PAD + Number(lv) * (BOX_W + GAP_X);
-      const y = startY + idx * (BOX_H + GAP_Y);
-      positions[name] = { x, y, cx: x + BOX_W / 2, cy: y + BOX_H / 2 };
-    });
-  });
-
-  // Draw arrows first (behind boxes)
-  nodeNames.forEach(name => {
-    const pos = positions[name];
-    if (!pos) return;
-    (deps[name] || []).forEach(dep => {
-      const depPos = positions[dep];
-      if (!depPos) return;
-      // Arrow from dep's right edge to name's left edge
-      const x1 = depPos.x + BOX_W;
-      const y1 = depPos.cy;
-      const x2 = pos.x;
-      const y2 = pos.cy;
-      const cx1 = x1 + 40;
-      const cx2 = x2 - 40;
-
-      const path = document.createElementNS(svgNS, 'path');
-      path.setAttribute('d', `M ${x1},${y1} C ${cx1},${y1} ${cx2},${y2} ${x2},${y2}`);
-      path.setAttribute('fill', 'none');
-      path.setAttribute('stroke', '#333333');
-      path.setAttribute('stroke-width', '1.5');
-      path.setAttribute('marker-end', 'url(#arrowhead)');
-      svg.appendChild(path);
-    });
-  });
-
-  // Arrow marker def
+  // Arrow marker
   const defs = document.createElementNS(svgNS, 'defs');
   const marker = document.createElementNS(svgNS, 'marker');
   marker.setAttribute('id', 'arrowhead');
@@ -2776,14 +1991,46 @@ function renderJobGraph(containerId, jobs, workflowJobs) {
   marker.setAttribute('refX', '6');
   marker.setAttribute('refY', '3.5');
   marker.setAttribute('orient', 'auto');
-  const arrowPoly = document.createElementNS(svgNS, 'polygon');
-  arrowPoly.setAttribute('points', '0 0, 7 3.5, 0 7');
-  arrowPoly.setAttribute('fill', '#333333');
-  marker.appendChild(arrowPoly);
+  const arrow = document.createElementNS(svgNS, 'polygon');
+  arrow.setAttribute('points', '0 0, 7 3.5, 0 7');
+  arrow.setAttribute('fill', '#333333');
+  marker.appendChild(arrow);
   defs.appendChild(marker);
-  svg.insertBefore(defs, svg.firstChild);
+  svg.appendChild(defs);
 
-  // Draw job boxes
+  // Positions
+  const positions = {};
+  Object.keys(byLevel).forEach(lv => {
+    const col = byLevel[lv];
+    const colH = col.length * BOX_H + (col.length - 1) * GAP_Y;
+    const startY = PAD + (maxColH * (BOX_H + GAP_Y) - GAP_Y - colH) / 2;
+    col.forEach((name, idx) => {
+      const x = PAD + Number(lv) * (BOX_W + GAP_X);
+      const y = startY + idx * (BOX_H + GAP_Y);
+      positions[name] = { x, y, cx: x + BOX_W / 2, cy: y + BOX_H / 2 };
+    });
+  });
+
+  // Arrows
+  nodeNames.forEach(name => {
+    const pos = positions[name];
+    if (!pos) return;
+    (deps[name] || []).forEach(dep => {
+      const dp = positions[dep];
+      if (!dp) return;
+      const x1 = dp.x + BOX_W, y1 = dp.cy;
+      const x2 = pos.x, y2 = pos.cy;
+      const path = document.createElementNS(svgNS, 'path');
+      path.setAttribute('d', `M ${x1},${y1} C ${x1+40},${y1} ${x2-40},${y2} ${x2},${y2}`);
+      path.setAttribute('fill', 'none');
+      path.setAttribute('stroke', '#333333');
+      path.setAttribute('stroke-width', '1.5');
+      path.setAttribute('marker-end', 'url(#arrowhead)');
+      svg.appendChild(path);
+    });
+  });
+
+  // Boxes
   nodeNames.forEach(name => {
     const pos = positions[name];
     if (!pos) return;
@@ -2791,123 +2038,75 @@ function renderJobGraph(containerId, jobs, workflowJobs) {
     const status = jobData ? jobData.status : 'pending';
     const dur = jobData ? formatJobDuration(jobData) : '';
     const isSelected = selectedJobBox === name;
-    const c = statusColor(status);
-    appendJobBox(svg, pos.x, pos.y, name, status, dur, isSelected, name, svgNS, c);
+    const c = jobStatusColor(status);
+
+    const g = document.createElementNS(svgNS, 'g');
+    g.style.cursor = 'pointer';
+
+    const rect = document.createElementNS(svgNS, 'rect');
+    rect.setAttribute('x', pos.x); rect.setAttribute('y', pos.y);
+    rect.setAttribute('width', BOX_W); rect.setAttribute('height', BOX_H);
+    rect.setAttribute('rx', '6'); rect.setAttribute('ry', '6');
+    rect.setAttribute('fill', c.bg); rect.setAttribute('stroke', c.border);
+    rect.setAttribute('stroke-width', isSelected ? '2.5' : '1.5');
+    g.appendChild(rect);
+
+    const dot = document.createElementNS(svgNS, 'circle');
+    dot.setAttribute('cx', pos.x + 14); dot.setAttribute('cy', pos.y + BOX_H / 2);
+    dot.setAttribute('r', '4'); dot.setAttribute('fill', jobStatusDotFill(status));
+    g.appendChild(dot);
+
+    const lbl = name.length > 12 ? name.slice(0, 11) + '\u2026' : name;
+    const txt = document.createElementNS(svgNS, 'text');
+    txt.setAttribute('x', pos.x + 26); txt.setAttribute('y', pos.y + BOX_H / 2 + (dur ? -4 : 5));
+    txt.setAttribute('fill', c.text); txt.setAttribute('font-size', '11');
+    txt.setAttribute('font-family', '-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif');
+    txt.setAttribute('font-weight', '500'); txt.setAttribute('dominant-baseline', 'middle');
+    txt.textContent = lbl;
+    g.appendChild(txt);
+
+    if (dur) {
+      const dt = document.createElementNS(svgNS, 'text');
+      dt.setAttribute('x', pos.x + BOX_W - 6); dt.setAttribute('y', pos.y + BOX_H - 7);
+      dt.setAttribute('fill', '#555555'); dt.setAttribute('font-size', '9');
+      dt.setAttribute('font-family', 'ui-monospace,monospace'); dt.setAttribute('text-anchor', 'end');
+      dt.textContent = dur;
+      g.appendChild(dt);
+    }
+
+    g.addEventListener('click', () => onJobBoxClick(name));
+    svg.appendChild(g);
   });
 
   container.appendChild(svg);
 }
 
-function appendJobBox(svg, x, y, label, status, dur, isSelected, clickName, svgNS, c) {
-  const g = document.createElementNS(svgNS, 'g');
-  g.style.cursor = clickName ? 'pointer' : 'default';
-
-  // Background rect
-  const rect = document.createElementNS(svgNS, 'rect');
-  rect.setAttribute('x', x);
-  rect.setAttribute('y', y);
-  rect.setAttribute('width', BOX_W);
-  rect.setAttribute('height', BOX_H);
-  rect.setAttribute('rx', '6');
-  rect.setAttribute('ry', '6');
-  rect.setAttribute('fill', c.bg);
-  rect.setAttribute('stroke', c.border);
-  rect.setAttribute('stroke-width', isSelected ? '2.5' : '1.5');
-  g.appendChild(rect);
-
-  // Status dot
-  const dotR = 4;
-  const dotCx = x + 14;
-  const dotCy = y + BOX_H / 2;
-  const dot = document.createElementNS(svgNS, 'circle');
-  dot.setAttribute('cx', dotCx);
-  dot.setAttribute('cy', dotCy);
-  dot.setAttribute('r', dotR);
-  dot.setAttribute('fill', statusDotFill(status));
-  g.appendChild(dot);
-
-  // Job name (truncated via SVG)
-  const nameText = document.createElementNS(svgNS, 'text');
-  nameText.setAttribute('x', x + 26);
-  nameText.setAttribute('y', y + BOX_H / 2 + (dur ? -4 : 5));
-  nameText.setAttribute('fill', c.text);
-  nameText.setAttribute('font-size', '11');
-  nameText.setAttribute('font-family', '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif');
-  nameText.setAttribute('font-weight', '500');
-  nameText.setAttribute('dominant-baseline', 'middle');
-  // Truncate label to fit
-  const maxChars = 12;
-  const displayLabel = label.length > maxChars ? label.slice(0, maxChars - 1) + '\u2026' : label;
-  nameText.textContent = displayLabel;
-  g.appendChild(nameText);
-
-  // Duration (bottom-right)
-  if (dur) {
-    const durText = document.createElementNS(svgNS, 'text');
-    durText.setAttribute('x', x + BOX_W - 6);
-    durText.setAttribute('y', y + BOX_H - 7);
-    durText.setAttribute('fill', '#555555');
-    durText.setAttribute('font-size', '9');
-    durText.setAttribute('font-family', 'ui-monospace, monospace');
-    durText.setAttribute('text-anchor', 'end');
-    durText.textContent = dur;
-    g.appendChild(durText);
-  }
-
-  // Click handler
-  if (clickName) {
-    g.addEventListener('click', () => onJobBoxClick(clickName));
-  }
-
-  svg.appendChild(g);
-}
-
 function onJobBoxClick(jobName) {
   selectedJobBox = jobName;
+  renderJobGraph('jobGraphInner', _lastJobsData, _lastWorkflowJobs);
 
-  // Re-render graph to update highlight
-  const run = selectedId ? runs.find(r => r.id === selectedId) : null;
-  if (run) {
-    // Re-render with current cached data
-    const graphContainer = document.getElementById('jobGraphInner');
-    if (graphContainer) {
-      renderJobGraph('jobGraphInner', _lastJobsData, _lastWorkflowJobs);
-    }
-  }
-
-  // Scroll log to nearest "## job: {name}" or "## running job {name}" line
-  const logOutputEl = document.getElementById('logOutput');
-  const text = logOutputEl.textContent;
+  const logEl = document.getElementById('logOutput');
+  if (!logEl) return;
+  const text = logEl.textContent;
   const lines = text.split('\n');
   const patterns = [
     new RegExp('##\\s+job:\\s*' + jobName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'),
     new RegExp('##\\s+running job\\s+' + jobName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'),
   ];
-
-  let charOffset = 0;
-  let foundOffset = -1;
+  let charOffset = 0, foundOffset = -1;
   for (let i = 0; i < lines.length; i++) {
-    if (patterns.some(p => p.test(lines[i]))) {
-      foundOffset = charOffset;
-      break;
-    }
+    if (patterns.some(p => p.test(lines[i]))) { foundOffset = charOffset; break; }
     charOffset += lines[i].length + 1;
   }
-
   if (foundOffset >= 0) {
-    // Approximate scroll: use a temporary marker
     const range = document.createRange();
-    const walker = document.createTreeWalker(logOutputEl, NodeFilter.SHOW_TEXT);
+    const walker = document.createTreeWalker(logEl, NodeFilter.SHOW_TEXT);
     let node, remaining = foundOffset;
     while ((node = walker.nextNode())) {
-      if (remaining <= node.textContent.length) {
-        range.setStart(node, remaining);
-        range.collapse(true);
-        break;
-      }
+      if (remaining <= node.textContent.length) { range.setStart(node, remaining); range.collapse(true); break; }
       remaining -= node.textContent.length;
     }
-    if (range.startContainer !== logOutputEl) {
+    if (range.startContainer !== logEl) {
       const span = document.createElement('span');
       range.insertNode(span);
       span.scrollIntoView({ block: 'center' });
@@ -2917,60 +2116,38 @@ function onJobBoxClick(jobName) {
   }
 }
 
-// Cache last graph data for re-renders on click
-let _lastJobsData = null;
-let _lastWorkflowJobs = null;
-
-function showJobGraph() {
-  document.getElementById('jobGraphContainer').classList.add('visible');
-}
-
-function hideJobGraph() {
-  document.getElementById('jobGraphContainer').classList.remove('visible');
-  document.getElementById('jobGraphInner').innerHTML = '';
-  _lastJobsData = null;
-  _lastWorkflowJobs = null;
+function stopJobGraphPolling() {
+  if (jobGraphTimer) { clearInterval(jobGraphTimer); jobGraphTimer = null; }
 }
 
 async function loadJobGraph(run) {
   if (!run) return;
+  const container = document.getElementById('jobGraphContainer');
+  if (!container) return;
 
-  let jobsData = [];
-  let workflowJobs = null;
-
-  // Fetch jobs
+  let jobsData = [], workflowJobs = null;
   try {
     const res = await fetch('/runs/' + run.id + '/jobs');
-    if (res.ok) {
-      jobsData = await res.json();
-    }
+    if (res.ok) jobsData = await res.json();
   } catch (_) {}
-
-  // Fetch workflow YAML
   try {
     const res = await fetch(
-      '/api/watches/' + encodeURIComponent(run.watch_name) +
+      '/api/projects/' + encodeURIComponent(run.watch_name) +
       '/workflows/' + encodeURIComponent(run.workflow_name) + '/content'
     );
-    if (res.ok) {
-      const yamlText = await res.text();
-      workflowJobs = parseWorkflowJobs(yamlText);
-    }
+    if (res.ok) workflowJobs = parseWorkflowJobs(await res.text());
   } catch (_) {}
 
   _lastJobsData = jobsData;
   _lastWorkflowJobs = workflowJobs;
-  renderJobGraph('jobGraphInner', jobsData, workflowJobs);
 
-  // Start polling if run is active
-  stopJobGraphPolling();
+  if (jobsData.length > 0 || (workflowJobs && Object.keys(workflowJobs).length > 0)) {
+    container.classList.add('visible');
+    renderJobGraph('jobGraphInner', jobsData, workflowJobs);
+  }
+
   if (!isTerminal(run.status)) {
-    jobGraphIntervalId = setInterval(async () => {
-      const currentRun = runs.find(r => r.id === run.id);
-      if (!currentRun || selectedId !== run.id) {
-        stopJobGraphPolling();
-        return;
-      }
+    jobGraphTimer = setInterval(async () => {
       try {
         const res = await fetch('/runs/' + run.id + '/jobs');
         if (res.ok) {
@@ -2978,32 +2155,310 @@ async function loadJobGraph(run) {
           renderJobGraph('jobGraphInner', _lastJobsData, _lastWorkflowJobs);
         }
       } catch (_) {}
-      if (isTerminal(currentRun.status)) stopJobGraphPolling();
     }, 3000);
   }
 }
 
-function stopJobGraphPolling() {
-  if (jobGraphIntervalId) {
-    clearInterval(jobGraphIntervalId);
-    jobGraphIntervalId = null;
+// ── Settings view ─────────────────────────────────────────────────────────────
+
+async function showSettings(tab) {
+  const ca = document.getElementById('contentArea');
+  ca.style.overflow = '';
+  ca.style.display = '';
+  ca.style.flexDirection = '';
+
+  const usersTabHtml = (currentUser && currentUser.role === 'admin')
+    ? '<button class="tab-btn" data-tab="users" onclick="switchSettingsTab(\'users\')">Users</button>'
+    : '';
+
+  ca.innerHTML = `
+    <div class="view-pad">
+      <div class="section-header" style="margin-bottom:20px">
+        <span class="section-title">Settings</span>
+      </div>
+      <div class="tab-bar">
+        <button class="tab-btn" data-tab="projects" onclick="switchSettingsTab('projects')">Projects</button>
+        ${usersTabHtml}
+      </div>
+      <div class="tab-pane" id="tab-projects"></div>
+      <div class="tab-pane" id="tab-users"></div>
+    </div>
+  `;
+
+  switchSettingsTab(tab || 'projects');
+}
+
+function switchSettingsTab(tab) {
+  document.querySelectorAll('.tab-btn[data-tab]').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.toggle('active', p.id === 'tab-' + tab));
+
+  if (tab === 'projects') loadSettingsProjects();
+  if (tab === 'users' && currentUser?.role === 'admin') loadSettingsUsers();
+}
+
+async function loadSettingsProjects() {
+  const pane = document.getElementById('tab-projects');
+  pane.innerHTML = '<div class="empty-notice">Loading&hellip;</div>';
+
+  let projects = [];
+  try { projects = await fetch('/api/projects').then(r => r.json()); } catch (_) {}
+
+  const newProjFormHtml = `
+    <div class="inline-form hidden" id="spNewProjForm">
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Name *</label><input class="form-input" type="text" id="spNpName" placeholder="my-project"></div>
+        <div class="form-group"><label class="form-label">Repo *</label><input class="form-input" type="text" id="spNpRepo" placeholder="owner/repo"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Branch</label><input class="form-input" type="text" id="spNpBranch" placeholder="main"></div>
+        <div class="form-group"><label class="form-label">Events</label>
+          <div class="checkbox-group">
+            <label><input type="checkbox" id="spNpPush" checked> push</label>
+            <label><input type="checkbox" id="spNpPR"> pull_request</label>
+          </div>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn" onclick="document.getElementById('spNewProjForm').classList.add('hidden')">Cancel</button>
+        <button class="btn btn-primary" onclick="submitSpNewProject()">Create</button>
+      </div>
+      <div class="error-msg" id="spNpError"></div>
+    </div>
+  `;
+
+  const cards = projects.map(p => {
+    const wfCount = (p.workflows || []).length;
+    return `
+      <div style="margin-bottom:8px;border:1px solid var(--border);border-radius:6px;overflow:hidden;background:var(--bg-elevated)">
+        <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;cursor:pointer" onclick="navigate('#projects/${esc(p.name)}')">
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:600;font-size:13px">${esc(p.name)}</div>
+            <div style="font-size:11px;color:var(--text-secondary)">${esc(p.repo)}${p.branch ? ' &middot; ' + esc(p.branch) : ''} &middot; ${wfCount} workflow${wfCount!==1?'s':''}</div>
+          </div>
+          <button class="btn btn-sm" onclick="event.stopPropagation();navigate('#projects/${esc(p.name)}')">Manage</button>
+          <button class="btn btn-sm btn-danger" onclick="event.stopPropagation();deleteProject('${esc(p.name)}')">&#10005;</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  pane.innerHTML = `
+    <div class="section-header">
+      <span class="section-subtitle">Projects</span>
+      <button class="btn btn-sm btn-primary" onclick="document.getElementById('spNewProjForm').classList.remove('hidden');document.getElementById('spNpName').focus()">&#65291; New project</button>
+    </div>
+    ${newProjFormHtml}
+    ${projects.length === 0 ? '<div class="empty-notice">No projects.</div>' : cards}
+  `;
+}
+
+async function submitSpNewProject() {
+  const name   = document.getElementById('spNpName')?.value.trim();
+  const repo   = document.getElementById('spNpRepo')?.value.trim();
+  const branch = document.getElementById('spNpBranch')?.value.trim();
+  const errEl  = document.getElementById('spNpError');
+  errEl.textContent = '';
+  if (!name) { errEl.textContent = 'Name is required.'; return; }
+  if (!repo)  { errEl.textContent = 'Repo is required.'; return; }
+
+  const events = [];
+  if (document.getElementById('spNpPush')?.checked) events.push('push');
+  if (document.getElementById('spNpPR')?.checked)   events.push('pull_request');
+
+  const body = { name, repo, on_events: events };
+  if (branch) body.branch = branch;
+
+  try {
+    const res = await fetch('/api/projects', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (!res.ok) { errEl.textContent = data.error || 'Failed.'; return; }
+    populateSidebar();
+    toast('Project created.', 'success');
+    loadSettingsProjects();
+  } catch (e) {
+    errEl.textContent = 'Network error: ' + e.message;
   }
 }
 
-// ─── Utils ────────────────────────────────────────────────────────────────────
+async function loadSettingsUsers() {
+  const pane = document.getElementById('tab-users');
+  pane.innerHTML = '<div class="empty-notice">Loading&hellip;</div>';
 
-function esc(str) {
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+  let users = [];
+  try { users = await fetch('/api/users').then(r => r.json()); } catch (_) {}
+
+  const addFormHtml = `
+    <div class="inline-form hidden" id="addUserForm">
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Username *</label><input class="form-input" type="text" id="ufUsername" autocomplete="off"></div>
+        <div class="form-group"><label class="form-label">Password *</label><input class="form-input" type="password" id="ufPassword" autocomplete="new-password"></div>
+        <div class="form-group" style="max-width:120px"><label class="form-label">Role</label>
+          <select class="form-input" id="ufRole">
+            <option value="user">user</option>
+            <option value="admin">admin</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn" onclick="document.getElementById('addUserForm').classList.add('hidden')">Cancel</button>
+        <button class="btn btn-primary" onclick="submitAddUser()">Add user</button>
+      </div>
+      <div class="error-msg" id="ufError"></div>
+    </div>
+  `;
+
+  const rows = users.map(u => {
+    const isSelf = currentUser && u.id === currentUser.id;
+    const created = u.created_at ? new Date(u.created_at).toLocaleDateString() : '';
+    return `
+      <tr>
+        <td>${esc(u.username)}${isSelf ? ' <span style="font-size:10px;color:var(--text-muted)">(you)</span>' : ''}</td>
+        <td><span class="role-badge ${esc(u.role)}">${esc(u.role)}</span></td>
+        <td style="color:var(--text-muted)">${esc(created)}</td>
+        <td>
+          <div class="td-actions">
+            <button class="btn btn-sm" onclick="changePassword(${u.id})">Change password</button>
+            ${!isSelf ? `<button class="btn btn-sm btn-danger" onclick="deleteUser(${u.id},'${esc(u.username)}')">Delete</button>` : ''}
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  const tableHtml = users.length === 0
+    ? '<div class="empty-notice">No users.</div>'
+    : `<table class="users-table">
+        <thead><tr><th>Username</th><th>Role</th><th>Created</th><th></th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+
+  pane.innerHTML = `
+    <div class="section-header">
+      <span class="section-subtitle">Users</span>
+      <button class="btn btn-sm btn-primary" onclick="document.getElementById('addUserForm').classList.remove('hidden');document.getElementById('ufUsername').focus()">&#65291; Add user</button>
+    </div>
+    ${addFormHtml}
+    <div id="usersTableWrap">${tableHtml}</div>
+  `;
 }
 
-// ─── Initialization ───────────────────────────────────────────────────────────
+async function submitAddUser() {
+  const username = document.getElementById('ufUsername')?.value.trim();
+  const password = document.getElementById('ufPassword')?.value;
+  const role     = document.getElementById('ufRole')?.value;
+  const errEl    = document.getElementById('ufError');
+  errEl.textContent = '';
+  if (!username) { errEl.textContent = 'Username is required.'; return; }
+  if (!password) { errEl.textContent = 'Password is required.'; return; }
+  try {
+    const res = await fetch('/api/users', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ username, password, role }),
+    });
+    const data = await res.json();
+    if (!res.ok) { errEl.textContent = data.error || 'Failed.'; return; }
+    document.getElementById('addUserForm')?.classList.add('hidden');
+    loadSettingsUsers();
+  } catch (e) {
+    errEl.textContent = 'Network error: ' + e.message;
+  }
+}
+
+async function deleteUser(id, username) {
+  if (!confirm('Delete user "' + username + '"?')) return;
+  try {
+    const res = await fetch('/api/users/' + id, { method: 'DELETE' });
+    if (!res.ok) { const d = await res.json().catch(()=>({})); toast(d.error || 'Failed.', 'error'); return; }
+    loadSettingsUsers();
+  } catch (e) {
+    toast('Network error: ' + e.message, 'error');
+  }
+}
+
+async function changePassword(id) {
+  const newPass = prompt('New password:');
+  if (newPass === null) return;
+  if (!newPass.trim()) { alert('Password cannot be empty.'); return; }
+  try {
+    const res = await fetch('/api/users/' + id + '/password', {
+      method: 'PUT',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ password: newPass }),
+    });
+    const data = await res.json();
+    if (!res.ok) { alert('Failed: ' + (data.error || 'HTTP ' + res.status)); return; }
+    toast('Password changed.', 'success');
+  } catch (e) {
+    alert('Network error: ' + e.message);
+  }
+}
+
+// ── Keyboard shortcuts ────────────────────────────────────────────────────────
+
+document.addEventListener('keydown', e => {
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  if (document.activeElement !== document.body && document.activeElement !== document.getElementById('contentArea')) return;
+
+  const hash = window.location.hash || '';
+  const isProjectDetail = /^#projects\/[^/]+$/.test(hash);
+  if (!isProjectDetail) return;
+
+  const rows = Array.from(document.querySelectorAll('#projectRunsWrap tbody tr[data-run-id]'));
+  if (rows.length === 0) return;
+
+  let currentIdx = -1;
+  // No persistent selection in this view, j/k navigate by index
+  if (e.key === 'j') {
+    e.preventDefault();
+    currentIdx = Math.min((currentIdx < 0 ? 0 : currentIdx + 1), rows.length - 1);
+    if (rows[0]) rows[0].click();
+  } else if (e.key === 'k') {
+    e.preventDefault();
+    if (rows[rows.length - 1]) rows[rows.length - 1].click();
+  }
+});
+
+// Also support j/k for navigating run list when on project detail
+// (track selected row index per view)
+(function() {
+  let _selIdx = -1;
+  document.addEventListener('keydown', e => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.target && e.target !== document.body) {
+      const tag = e.target.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+    }
+    const hash = window.location.hash || '';
+    if (!/^#projects\/[^/]+$/.test(hash)) { _selIdx = -1; return; }
+
+    const rows = Array.from(document.querySelectorAll('#projectRunsWrap tbody tr[data-run-id]'));
+    if (rows.length === 0) return;
+
+    if (e.key === 'j') {
+      e.preventDefault();
+      _selIdx = Math.min(_selIdx + 1, rows.length - 1);
+      if (_selIdx < 0) _selIdx = 0;
+      rows.forEach((r, i) => r.style.outline = i === _selIdx ? '1px solid var(--accent)' : '');
+      rows[_selIdx]?.scrollIntoView({ block: 'nearest' });
+    } else if (e.key === 'k') {
+      e.preventDefault();
+      _selIdx = Math.max(_selIdx - 1, 0);
+      rows.forEach((r, i) => r.style.outline = i === _selIdx ? '1px solid var(--accent)' : '');
+      rows[_selIdx]?.scrollIntoView({ block: 'nearest' });
+    } else if (e.key === 'Enter' && _selIdx >= 0 && rows[_selIdx]) {
+      rows[_selIdx].click();
+    }
+  });
+})();
+
+// ── Init ──────────────────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
-  // Enter key submits login/setup forms
   document.getElementById('loginPassword').addEventListener('keydown', e => {
     if (e.key === 'Enter') handleLogin();
   });
@@ -3013,11 +2468,6 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('setupConfirm').addEventListener('keydown', e => {
     if (e.key === 'Enter') handleSetup();
   });
-
-  // Show no-run-selected state initially (will be replaced on first fetch if runs exist)
-  document.getElementById('emptyState').style.display = 'none';
-  document.getElementById('noRunState').style.display = 'flex';
-
   checkSetup();
 });
 </script>

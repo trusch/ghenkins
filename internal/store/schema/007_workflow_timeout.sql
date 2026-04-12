@@ -1,0 +1,1 @@
+ALTER TABLE workflows ADD COLUMN timeout_minutes INTEGER NOT NULL DEFAULT 0;

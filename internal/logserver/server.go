@@ -21,6 +21,12 @@ import (
 //go:embed ui/index.html
 var uiFS embed.FS
 
+// RunControl allows the server to trigger and cancel runs.
+type RunControl interface {
+	TriggerRun(ctx context.Context, projectName, workflowName string) (runID string, err error)
+	CancelRun(ctx context.Context, runID string) error
+}
+
 type contextKey string
 
 const userContextKey contextKey = "user"
@@ -37,6 +43,12 @@ type Server struct {
 	maxBytes int64
 	maxAge   time.Duration
 	log      zerolog.Logger
+	rc       RunControl
+}
+
+// SetRunControl sets the RunControl implementation on the server.
+func (s *Server) SetRunControl(rc RunControl) {
+	s.rc = rc
 }
 
 func New(bind, logDir string, st store.Store, maxBytes int64, maxAge time.Duration, log zerolog.Logger) *Server {
@@ -116,17 +128,56 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /runs/{id}/log", s.authMiddleware(s.handleRunLog))
 	mux.HandleFunc("GET /runs/{id}/jobs", s.authMiddleware(s.handleListRunJobs))
 
-	// Watches (protected)
-	mux.HandleFunc("GET /api/watches", s.authMiddleware(s.handleListWatches))
-	mux.HandleFunc("POST /api/watches", s.authMiddleware(s.handleCreateWatch))
-	mux.HandleFunc("GET /api/watches/{name}", s.authMiddleware(s.handleGetWatch))
-	mux.HandleFunc("PUT /api/watches/{name}", s.authMiddleware(s.handleUpdateWatch))
-	mux.HandleFunc("DELETE /api/watches/{name}", s.authMiddleware(s.handleDeleteWatch))
-	mux.HandleFunc("POST /api/watches/{name}/workflows", s.authMiddleware(s.handleCreateWorkflow))
-	mux.HandleFunc("PUT /api/watches/{name}/workflows/{wfname}", s.authMiddleware(s.handleUpdateWorkflow))
-	mux.HandleFunc("DELETE /api/watches/{name}/workflows/{wfname}", s.authMiddleware(s.handleDeleteWorkflow))
-	mux.HandleFunc("GET /api/watches/{name}/workflows/{wfname}/content", s.authMiddleware(s.handleGetWorkflowContent))
-	mux.HandleFunc("PUT /api/watches/{name}/workflows/{wfname}/content", s.authMiddleware(s.handlePutWorkflowContent))
+	// Projects (new canonical routes)
+	mux.HandleFunc("GET /api/projects", s.authMiddleware(s.handleListWatches))
+	mux.HandleFunc("POST /api/projects", s.authMiddleware(s.handleCreateWatch))
+	mux.HandleFunc("GET /api/projects/{name}", s.authMiddleware(s.handleGetWatch))
+	mux.HandleFunc("PUT /api/projects/{name}", s.authMiddleware(s.handleUpdateWatch))
+	mux.HandleFunc("DELETE /api/projects/{name}", s.authMiddleware(s.handleDeleteWatch))
+	mux.HandleFunc("POST /api/projects/{name}/workflows", s.authMiddleware(s.handleCreateWorkflow))
+	mux.HandleFunc("PUT /api/projects/{name}/workflows/{wfname}", s.authMiddleware(s.handleUpdateWorkflow))
+	mux.HandleFunc("DELETE /api/projects/{name}/workflows/{wfname}", s.authMiddleware(s.handleDeleteWorkflow))
+	mux.HandleFunc("GET /api/projects/{name}/workflows/{wfname}/content", s.authMiddleware(s.handleGetWorkflowContent))
+	mux.HandleFunc("PUT /api/projects/{name}/workflows/{wfname}/content", s.authMiddleware(s.handlePutWorkflowContent))
+	mux.HandleFunc("POST /api/projects/{name}/workflows/{wfname}/trigger", s.authMiddleware(s.handleTriggerRun))
+
+	// Watches (deprecated aliases — redirect to /api/projects)
+	mux.HandleFunc("GET /api/watches", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/api/projects", http.StatusMovedPermanently)
+	})
+	mux.HandleFunc("POST /api/watches", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/api/projects", http.StatusMovedPermanently)
+	})
+	mux.HandleFunc("GET /api/watches/{name}", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/api/projects/"+r.PathValue("name"), http.StatusMovedPermanently)
+	})
+	mux.HandleFunc("PUT /api/watches/{name}", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/api/projects/"+r.PathValue("name"), http.StatusMovedPermanently)
+	})
+	mux.HandleFunc("DELETE /api/watches/{name}", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/api/projects/"+r.PathValue("name"), http.StatusMovedPermanently)
+	})
+	mux.HandleFunc("POST /api/watches/{name}/workflows", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/api/projects/"+r.PathValue("name")+"/workflows", http.StatusMovedPermanently)
+	})
+	mux.HandleFunc("PUT /api/watches/{name}/workflows/{wfname}", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/api/projects/"+r.PathValue("name")+"/workflows/"+r.PathValue("wfname"), http.StatusMovedPermanently)
+	})
+	mux.HandleFunc("DELETE /api/watches/{name}/workflows/{wfname}", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/api/projects/"+r.PathValue("name")+"/workflows/"+r.PathValue("wfname"), http.StatusMovedPermanently)
+	})
+	mux.HandleFunc("GET /api/watches/{name}/workflows/{wfname}/content", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/api/projects/"+r.PathValue("name")+"/workflows/"+r.PathValue("wfname")+"/content", http.StatusMovedPermanently)
+	})
+	mux.HandleFunc("PUT /api/watches/{name}/workflows/{wfname}/content", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/api/projects/"+r.PathValue("name")+"/workflows/"+r.PathValue("wfname")+"/content", http.StatusMovedPermanently)
+	})
+
+	// Run control
+	mux.HandleFunc("POST /runs/{id}/cancel", s.authMiddleware(s.handleCancelRun))
+
+	// Stats
+	mux.HandleFunc("GET /api/stats", s.authMiddleware(s.handleStats))
 
 	// Users (admin-only, except self password change)
 	mux.HandleFunc("GET /api/users", s.adminMiddleware(s.handleListUsers))
@@ -612,6 +663,93 @@ func (s *Server) handlePutWorkflowContent(w http.ResponseWriter, r *http.Request
 	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
+// ---- Run control handlers ----
+
+func (s *Server) handleTriggerRun(w http.ResponseWriter, r *http.Request) {
+	if s.rc == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "run control not available"})
+		return
+	}
+	projectName := r.PathValue("name")
+	wfName := r.PathValue("wfname")
+	_, err := s.rc.TriggerRun(r.Context(), projectName, wfName)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
+func (s *Server) handleCancelRun(w http.ResponseWriter, r *http.Request) {
+	if s.rc == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "run control not available"})
+		return
+	}
+	id := r.PathValue("id")
+	if err := s.rc.CancelRun(r.Context(), id); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
+// ---- Stats handler ----
+
+type Stats struct {
+	TotalRuns24h   int     `json:"total_runs_24h"`
+	SuccessRate24h float64 `json:"success_rate_24h"`
+	ActiveRuns     int     `json:"active_runs"`
+	ProjectCount   int     `json:"project_count"`
+	RecentFailures int     `json:"recent_failures"`
+}
+
+func (s *Server) handleStats(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	runs, err := s.store.ListRuns(ctx, 200)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal error"})
+		return
+	}
+
+	watches, err := s.store.ListWatches(ctx)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal error"})
+		return
+	}
+
+	cutoff := time.Now().Add(-24 * time.Hour)
+	var total24h, success24h, active, failures int
+	for _, r := range runs {
+		if r.Status == store.RunStatusQueued || r.Status == store.RunStatusRunning {
+			active++
+		}
+		if r.StartedAt.Before(cutoff) {
+			continue
+		}
+		total24h++
+		switch r.Status {
+		case store.RunStatusSuccess:
+			success24h++
+		case store.RunStatusFailure, store.RunStatusError:
+			failures++
+		}
+	}
+
+	var successRate float64
+	if total24h > 0 {
+		successRate = float64(success24h) / float64(total24h)
+	}
+
+	writeJSON(w, http.StatusOK, Stats{
+		TotalRuns24h:   total24h,
+		SuccessRate24h: successRate,
+		ActiveRuns:     active,
+		ProjectCount:   len(watches),
+		RecentFailures: failures,
+	})
+}
+
 // ---- Users handlers ----
 
 func (s *Server) handleListUsers(w http.ResponseWriter, r *http.Request) {
@@ -723,21 +861,23 @@ func (b *watchRequestBody) toDBWatch() *store.DBWatch {
 }
 
 type workflowRequestBody struct {
-	Name        string            `json:"name"`
-	Path        string            `json:"path"`
-	RunnerImage string            `json:"runner_image"`
-	Secrets     map[string]string `json:"secrets"`
-	Env         map[string]string `json:"env"`
+	Name           string            `json:"name"`
+	Path           string            `json:"path"`
+	RunnerImage    string            `json:"runner_image"`
+	Secrets        map[string]string `json:"secrets"`
+	Env            map[string]string `json:"env"`
+	TimeoutMinutes int               `json:"timeout_minutes"`
 }
 
 func (b *workflowRequestBody) toDBWorkflow(watchName string) *store.DBWorkflow {
 	wf := &store.DBWorkflow{
-		WatchName:   watchName,
-		Name:        b.Name,
-		Path:        b.Path,
-		RunnerImage: b.RunnerImage,
-		Secrets:     b.Secrets,
-		Env:         b.Env,
+		WatchName:      watchName,
+		Name:           b.Name,
+		Path:           b.Path,
+		RunnerImage:    b.RunnerImage,
+		Secrets:        b.Secrets,
+		Env:            b.Env,
+		TimeoutMinutes: b.TimeoutMinutes,
 	}
 	if wf.Secrets == nil {
 		wf.Secrets = map[string]string{}

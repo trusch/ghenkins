@@ -49,11 +49,12 @@ type Watch struct {
 }
 
 type WorkflowRef struct {
-	Path         string            `yaml:"path"`
-	Name         string            `yaml:"name"`
-	Secrets      map[string]string `yaml:"secrets"`
-	Env          map[string]string `yaml:"env"`
-	RunnerImage  string            `yaml:"runner_image"` // overrides runs-on for this workflow
+	Path           string            `yaml:"path"`
+	Name           string            `yaml:"name"`
+	Secrets        map[string]string `yaml:"secrets"`
+	Env            map[string]string `yaml:"env"`
+	RunnerImage    string            `yaml:"runner_image"` // overrides runs-on for this workflow
+	TimeoutMinutes int               `yaml:"timeout_minutes"`
 }
 
 func Load(path string) (*Config, error) {

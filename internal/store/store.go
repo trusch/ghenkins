@@ -87,13 +87,14 @@ type DBWatch struct {
 }
 
 type DBWorkflow struct {
-	ID          string            `json:"id"`
-	WatchName   string            `json:"watch_name"`
-	Name        string            `json:"name"`
-	Path        string            `json:"path"`
-	RunnerImage string            `json:"runner_image,omitempty"`
-	Secrets     map[string]string `json:"secrets"`
-	Env         map[string]string `json:"env"`
+	ID             string            `json:"id"`
+	WatchName      string            `json:"watch_name"`
+	Name           string            `json:"name"`
+	Path           string            `json:"path"`
+	RunnerImage    string            `json:"runner_image,omitempty"`
+	Secrets        map[string]string `json:"secrets"`
+	Env            map[string]string `json:"env"`
+	TimeoutMinutes int               `json:"timeout_minutes,omitempty"`
 }
 
 type Store interface {
@@ -211,6 +212,9 @@ func (s *SQLiteStore) GetRun(ctx context.Context, id string) (*Run, error) {
 }
 
 func (s *SQLiteStore) ListRuns(ctx context.Context, limit int) ([]Run, error) {
+	if limit <= 0 {
+		limit = 10000
+	}
 	rows, err := s.db.QueryContext(ctx,
 		`SELECT id, watch_name, repo, sha, workflow_name, status, started_at, finished_at, exit_code, log_path
 		 FROM runs ORDER BY started_at DESC LIMIT ?`, limit)
@@ -461,7 +465,7 @@ func (s *SQLiteStore) GetWatch(ctx context.Context, name string) (*DBWatch, erro
 
 func (s *SQLiteStore) loadWorkflows(ctx context.Context, w *DBWatch) error {
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT id, watch_name, name, path, COALESCE(runner_image,''), secrets, env FROM workflows WHERE watch_name = ? ORDER BY name ASC`,
+		`SELECT id, watch_name, name, path, COALESCE(runner_image,''), secrets, env, COALESCE(timeout_minutes,0) FROM workflows WHERE watch_name = ? ORDER BY name ASC`,
 		w.Name)
 	if err != nil {
 		return fmt.Errorf("load workflows: %w", err)
@@ -580,8 +584,8 @@ func (s *SQLiteStore) insertWorkflow(ctx context.Context, wf *DBWorkflow) error 
 		runnerImage = wf.RunnerImage
 	}
 	_, err = s.db.ExecContext(ctx,
-		`INSERT INTO workflows (id, watch_name, name, path, runner_image, secrets, env) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-		wf.ID, wf.WatchName, wf.Name, wf.Path, runnerImage, string(secretsJSON), string(envJSON),
+		`INSERT INTO workflows (id, watch_name, name, path, runner_image, secrets, env, timeout_minutes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		wf.ID, wf.WatchName, wf.Name, wf.Path, runnerImage, string(secretsJSON), string(envJSON), wf.TimeoutMinutes,
 	)
 	if err != nil {
 		return fmt.Errorf("insert workflow: %w", err)
@@ -606,8 +610,8 @@ func (s *SQLiteStore) UpdateWorkflow(ctx context.Context, wf *DBWorkflow) error 
 		runnerImage = wf.RunnerImage
 	}
 	_, err = s.db.ExecContext(ctx,
-		`UPDATE workflows SET path = ?, runner_image = ?, secrets = ?, env = ? WHERE watch_name = ? AND name = ?`,
-		wf.Path, runnerImage, string(secretsJSON), string(envJSON), wf.WatchName, wf.Name,
+		`UPDATE workflows SET path = ?, runner_image = ?, secrets = ?, env = ?, timeout_minutes = ? WHERE watch_name = ? AND name = ?`,
+		wf.Path, runnerImage, string(secretsJSON), string(envJSON), wf.TimeoutMinutes, wf.WatchName, wf.Name,
 	)
 	if err != nil {
 		return fmt.Errorf("update workflow: %w", err)
@@ -765,7 +769,7 @@ func scanWatch(s scanner) (*DBWatch, error) {
 func scanWorkflow(s scanner) (*DBWorkflow, error) {
 	var wf DBWorkflow
 	var secretsJSON, envJSON string
-	err := s.Scan(&wf.ID, &wf.WatchName, &wf.Name, &wf.Path, &wf.RunnerImage, &secretsJSON, &envJSON)
+	err := s.Scan(&wf.ID, &wf.WatchName, &wf.Name, &wf.Path, &wf.RunnerImage, &secretsJSON, &envJSON, &wf.TimeoutMinutes)
 	if err != nil {
 		return nil, fmt.Errorf("scan workflow: %w", err)
 	}
