@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -141,11 +142,29 @@ func (r *PodmanRunner) Run(ctx context.Context, j poller.Job, wf config.Workflow
 	fmt.Fprintf(logWriter, "## Cloning/fetching %s/%s...\n", j.Owner, j.RepoName)
 	bareDir, err := ensureBareClone(ctx, r.cacheDir, j.Owner, j.RepoName)
 	if err != nil {
+		fmt.Fprintf(logWriter, "## ERROR: clone/fetch failed: %v\n", err)
 		return 0, fmt.Errorf("ensureBareClone: %w", err)
 	}
-	fmt.Fprintf(logWriter, "## Checking out %s...\n", j.SHA[:7])
-	wtDir, cleanup, err := addWorktree(ctx, bareDir, j.SHA)
+	// Resolve "manual" (from manual trigger) to the actual branch HEAD SHA
+	sha := j.SHA
+	if sha == "manual" {
+		// In a bare clone, branches are stored as refs/heads/<branch>
+		ref := "refs/heads/" + j.Branch
+		out, rerr := exec.CommandContext(ctx, "git", "-C", bareDir, "rev-parse", ref).CombinedOutput()
+		if rerr != nil {
+			fmt.Fprintf(logWriter, "## ERROR: resolve branch %s HEAD: %v\n%s\n", j.Branch, rerr, out)
+			return 0, fmt.Errorf("resolve branch %s HEAD: %w\n%s", j.Branch, rerr, out)
+		}
+		sha = strings.TrimSpace(string(out))
+	}
+	shortSHA := sha
+	if len(shortSHA) > 7 {
+		shortSHA = shortSHA[:7]
+	}
+	fmt.Fprintf(logWriter, "## Checking out %s...\n", shortSHA)
+	wtDir, cleanup, err := addWorktree(ctx, bareDir, sha)
 	if err != nil {
+		fmt.Fprintf(logWriter, "## ERROR: worktree checkout failed: %v\n", err)
 		return 0, fmt.Errorf("addWorktree: %w", err)
 	}
 	defer cleanup()
