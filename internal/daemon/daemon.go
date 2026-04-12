@@ -297,6 +297,28 @@ func (d *Daemon) runJob(ctx context.Context, j poller.Job, wf config.WorkflowRef
 		TargetURL: targetURL,
 	})
 
+	// Set job-level callback if the runner supports it.
+	if pr, ok := d.runner.(*runner.PodmanRunner); ok {
+		capturedRunID := runID
+		pr.JobCallback = func(jobName string, status runner.JobStatus, startedAt, finishedAt time.Time) {
+			rj := &store.RunJob{
+				ID:      capturedRunID + "-" + jobName,
+				RunID:   capturedRunID,
+				JobName: jobName,
+				Status:  store.RunJobStatus(jobStatusToString(status)),
+			}
+			if !startedAt.IsZero() {
+				t := startedAt
+				rj.StartedAt = &t
+			}
+			if !finishedAt.IsZero() {
+				t := finishedAt
+				rj.FinishedAt = &t
+			}
+			_ = d.store.UpsertRunJob(context.Background(), rj)
+		}
+	}
+
 	// Open log file; fall back to io.Discard so a create failure does not panic.
 	var logWriter io.Writer = io.Discard
 	logFile, fileErr := os.Create(logPath)
@@ -346,4 +368,21 @@ func generateID() string {
 func splitRepo(repo string) (string, string) {
 	parts := strings.SplitN(repo, "/", 2)
 	return parts[0], parts[1]
+}
+
+func jobStatusToString(s runner.JobStatus) string {
+	switch s {
+	case runner.JobStatusSuccess:
+		return "success"
+	case runner.JobStatusFailure:
+		return "failure"
+	case runner.JobStatusCancelled:
+		return "failure"
+	case runner.JobStatusSkipped:
+		return "skipped"
+	case runner.JobStatusRunning:
+		return "running"
+	default:
+		return "pending"
+	}
 }

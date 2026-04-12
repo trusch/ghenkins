@@ -114,6 +114,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /runs", s.authMiddleware(s.handleListRuns))
 	mux.HandleFunc("GET /runs/{id}", s.authMiddleware(s.handleGetRun))
 	mux.HandleFunc("GET /runs/{id}/log", s.authMiddleware(s.handleRunLog))
+	mux.HandleFunc("GET /runs/{id}/jobs", s.authMiddleware(s.handleListRunJobs))
 
 	// Watches (protected)
 	mux.HandleFunc("GET /api/watches", s.authMiddleware(s.handleListWatches))
@@ -124,6 +125,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /api/watches/{name}/workflows", s.authMiddleware(s.handleCreateWorkflow))
 	mux.HandleFunc("PUT /api/watches/{name}/workflows/{wfname}", s.authMiddleware(s.handleUpdateWorkflow))
 	mux.HandleFunc("DELETE /api/watches/{name}/workflows/{wfname}", s.authMiddleware(s.handleDeleteWorkflow))
+	mux.HandleFunc("GET /api/watches/{name}/workflows/{wfname}/content", s.authMiddleware(s.handleGetWorkflowContent))
+	mux.HandleFunc("PUT /api/watches/{name}/workflows/{wfname}/content", s.authMiddleware(s.handlePutWorkflowContent))
 
 	// Users (admin-only, except self password change)
 	mux.HandleFunc("GET /api/users", s.adminMiddleware(s.handleListUsers))
@@ -400,6 +403,19 @@ func (s *Server) handleRunLog(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (s *Server) handleListRunJobs(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	jobs, err := s.store.ListRunJobs(r.Context(), id)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal error"})
+		return
+	}
+	if jobs == nil {
+		jobs = []*store.RunJob{}
+	}
+	writeJSON(w, http.StatusOK, jobs)
+}
+
 // ---- Watches handlers ----
 
 func (s *Server) handleListWatches(w http.ResponseWriter, r *http.Request) {
@@ -517,6 +533,83 @@ func (s *Server) handleDeleteWorkflow(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "deleted"})
+}
+
+func (s *Server) handleGetWorkflowContent(w http.ResponseWriter, r *http.Request) {
+	watchName := r.PathValue("name")
+	wfName := r.PathValue("wfname")
+
+	watch, err := s.store.GetWatch(r.Context(), watchName)
+	if err != nil {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "watch not found"})
+		return
+	}
+
+	var wfPath string
+	for _, wf := range watch.Workflows {
+		if wf.Name == wfName {
+			wfPath = wf.Path
+			break
+		}
+	}
+	if wfPath == "" {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "workflow not found"})
+		return
+	}
+
+	data, err := os.ReadFile(wfPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			writeJSON(w, http.StatusNotFound, map[string]string{"error": "workflow file not found"})
+			return
+		}
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "read error: " + err.Error()})
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	w.Write(data) //nolint:errcheck
+}
+
+func (s *Server) handlePutWorkflowContent(w http.ResponseWriter, r *http.Request) {
+	watchName := r.PathValue("name")
+	wfName := r.PathValue("wfname")
+
+	watch, err := s.store.GetWatch(r.Context(), watchName)
+	if err != nil {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "watch not found"})
+		return
+	}
+
+	var wfPath string
+	for _, wf := range watch.Workflows {
+		if wf.Name == wfName {
+			wfPath = wf.Path
+			break
+		}
+	}
+	if wfPath == "" {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "workflow not found"})
+		return
+	}
+
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read body: " + err.Error()})
+		return
+	}
+
+	if err := os.MkdirAll(filepath.Dir(wfPath), 0o755); err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "create dirs: " + err.Error()})
+		return
+	}
+	if err := os.WriteFile(wfPath, body, 0o644); err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "write error: " + err.Error()})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
 // ---- Users handlers ----

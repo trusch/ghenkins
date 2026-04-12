@@ -24,6 +24,25 @@ const (
 	RunStatusCanceled RunStatus = "canceled"
 )
 
+type RunJobStatus string
+
+const (
+	RunJobStatusPending RunJobStatus = "pending"
+	RunJobStatusRunning RunJobStatus = "running"
+	RunJobStatusSuccess RunJobStatus = "success"
+	RunJobStatusFailure RunJobStatus = "failure"
+	RunJobStatusSkipped RunJobStatus = "skipped"
+)
+
+type RunJob struct {
+	ID         string       `json:"id"`
+	RunID      string       `json:"run_id"`
+	JobName    string       `json:"job_name"`
+	Status     RunJobStatus `json:"status"`
+	StartedAt  *time.Time   `json:"started_at"`
+	FinishedAt *time.Time   `json:"finished_at"`
+}
+
 type Run struct {
 	ID           string     `json:"id"`
 	WatchName    string     `json:"watch_name"`
@@ -110,6 +129,10 @@ type Store interface {
 	CreateWorkflow(ctx context.Context, wf *DBWorkflow) error
 	UpdateWorkflow(ctx context.Context, wf *DBWorkflow) error
 	DeleteWorkflow(ctx context.Context, watchName, workflowName string) error
+
+	// RunJobs
+	UpsertRunJob(ctx context.Context, job *RunJob) error
+	ListRunJobs(ctx context.Context, runID string) ([]*RunJob, error)
 
 	Close() error
 }
@@ -604,6 +627,49 @@ func (s *SQLiteStore) DeleteWorkflow(ctx context.Context, watchName, workflowNam
 	return nil
 }
 
+// ---- RunJobs ----
+
+func (s *SQLiteStore) UpsertRunJob(ctx context.Context, job *RunJob) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	_, err := s.db.ExecContext(ctx,
+		`INSERT INTO run_jobs (id, run_id, job_name, status, started_at, finished_at)
+		 VALUES (?, ?, ?, ?, ?, ?)
+		 ON CONFLICT(run_id, job_name) DO UPDATE SET
+		   id = excluded.id,
+		   status = excluded.status,
+		   started_at = excluded.started_at,
+		   finished_at = excluded.finished_at`,
+		job.ID, job.RunID, job.JobName, string(job.Status),
+		nullTime(job.StartedAt), nullTime(job.FinishedAt),
+	)
+	if err != nil {
+		return fmt.Errorf("upsert run job: %w", err)
+	}
+	return nil
+}
+
+func (s *SQLiteStore) ListRunJobs(ctx context.Context, runID string) ([]*RunJob, error) {
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT id, run_id, job_name, status, started_at, finished_at
+		 FROM run_jobs WHERE run_id = ? ORDER BY rowid ASC`, runID)
+	if err != nil {
+		return nil, fmt.Errorf("list run jobs: %w", err)
+	}
+	defer rows.Close()
+
+	var jobs []*RunJob
+	for rows.Next() {
+		rj, err := scanRunJob(rows)
+		if err != nil {
+			return nil, err
+		}
+		jobs = append(jobs, rj)
+	}
+	return jobs, rows.Err()
+}
+
 // ---- Scanners ----
 
 // scanner is implemented by both *sql.Row and *sql.Rows
@@ -710,6 +776,40 @@ func scanWorkflow(s scanner) (*DBWorkflow, error) {
 		wf.Env = map[string]string{}
 	}
 	return &wf, nil
+}
+
+func scanRunJob(s scanner) (*RunJob, error) {
+	var rj RunJob
+	var status string
+	var startedAt, finishedAt sql.NullString
+
+	err := s.Scan(&rj.ID, &rj.RunID, &rj.JobName, &status, &startedAt, &finishedAt)
+	if err != nil {
+		return nil, fmt.Errorf("scan run job: %w", err)
+	}
+	rj.Status = RunJobStatus(status)
+
+	if startedAt.Valid {
+		t, err := time.Parse(time.RFC3339Nano, startedAt.String)
+		if err != nil {
+			t, err = time.Parse("2006-01-02T15:04:05Z", startedAt.String)
+			if err != nil {
+				return nil, fmt.Errorf("parse run job started_at: %w", err)
+			}
+		}
+		rj.StartedAt = &t
+	}
+	if finishedAt.Valid {
+		t, err := time.Parse(time.RFC3339Nano, finishedAt.String)
+		if err != nil {
+			t, err = time.Parse("2006-01-02T15:04:05Z", finishedAt.String)
+			if err != nil {
+				return nil, fmt.Errorf("parse run job finished_at: %w", err)
+			}
+		}
+		rj.FinishedAt = &t
+	}
+	return &rj, nil
 }
 
 // ---- Helpers ----

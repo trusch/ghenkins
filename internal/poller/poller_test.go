@@ -75,6 +75,10 @@ func (s *memStore) DeleteWatch(_ context.Context, _ string) error               
 func (s *memStore) CreateWorkflow(_ context.Context, _ *store.DBWorkflow) error     { return nil }
 func (s *memStore) UpdateWorkflow(_ context.Context, _ *store.DBWorkflow) error     { return nil }
 func (s *memStore) DeleteWorkflow(_ context.Context, _, _ string) error             { return nil }
+func (s *memStore) UpsertRunJob(_ context.Context, _ *store.RunJob) error           { return nil }
+func (s *memStore) ListRunJobs(_ context.Context, _ string) ([]*store.RunJob, error) {
+	return nil, nil
+}
 
 // newGHClient creates a github.Client pointed at the given test server URL.
 func newGHClient(serverURL string) *github.Client {

@@ -21,6 +21,8 @@ const (
 	JobStatusSuccess
 	JobStatusFailure
 	JobStatusCancelled
+	JobStatusSkipped
+	JobStatusRunning
 )
 
 // EvalContext holds all GitHub Actions context objects for expression evaluation.

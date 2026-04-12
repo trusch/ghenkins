@@ -180,6 +180,33 @@ body {
   color: var(--text-muted);
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sidebar-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 16px;
+  padding: 0 5px;
+  border-radius: 8px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  font-size: 10px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.sidebar-footer {
+  padding: 6px 14px;
+  font-size: 10px;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+  user-select: none;
 }
 
 .run-list {
@@ -194,57 +221,86 @@ body {
   text-align: center;
 }
 
-/* Run items */
+/* Run items — improved layout */
 .run-item {
   display: flex;
   flex-direction: column;
   gap: 3px;
-  padding: 10px 14px;
+  padding: 9px 14px 9px 10px;
   border-bottom: 1px solid var(--border-subtle);
   cursor: pointer;
   transition: background 100ms;
-  border-left: 2px solid transparent;
+  border-left: 4px solid transparent;
+  position: relative;
 }
 
 .run-item:hover { background: var(--bg-elevated); }
 .run-item.selected {
   background: var(--bg-selected);
   border-left-color: var(--accent);
-  padding-left: 12px;
 }
+
+.run-item.status-queued   { border-left-color: var(--status-queued); }
+.run-item.status-running  { border-left-color: var(--status-running); }
+.run-item.status-success  { border-left-color: var(--status-success); }
+.run-item.status-failure  { border-left-color: var(--status-failure); }
+.run-item.status-error    { border-left-color: var(--status-error); }
+.run-item.status-canceled { border-left-color: var(--status-canceled); }
+
+.run-item.selected { border-left-color: var(--accent); }
 
 .run-item .row1 {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
+  align-items: center;
   gap: 6px;
 }
 
-.run-item .row1 .watch-name {
-  font-size: 13px;
+.run-item .row1 .watch-workflow {
+  font-size: 12px;
   font-weight: 500;
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;
+  flex: 1;
 }
 
-.run-item .row1 .workflow-name {
-  font-size: 12px;
-  color: var(--text-secondary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0;
-  flex-shrink: 1;
+.run-item .row1 .watch-workflow .wf-sep {
+  color: var(--text-muted);
+  margin: 0 2px;
 }
+
+/* Compact status dot for run list */
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: inline-block;
+}
+
+.status-dot.queued   { background: var(--status-queued); }
+.status-dot.running  { background: var(--status-running); animation: pulse 1.5s ease-in-out infinite; }
+.status-dot.success  { background: var(--status-success); }
+.status-dot.failure  { background: var(--status-failure); }
+.status-dot.error    { background: var(--status-error); }
+.status-dot.canceled { background: var(--status-canceled); }
 
 .run-item .row2 {
   display: flex;
-  gap: 8px;
+  gap: 4px;
   align-items: center;
-  flex-wrap: wrap;
+  justify-content: space-between;
+}
+
+.run-item .row2-left {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .run-item .repo-name {
@@ -260,13 +316,17 @@ body {
   font-family: ui-monospace, "Menlo", "Monaco", monospace;
   font-size: 11px;
   color: var(--text-muted);
+  flex-shrink: 0;
 }
 
-.run-item .row3 {
+.run-item .row2-right {
   font-size: 11px;
   color: var(--text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
   display: flex;
-  gap: 6px;
+  gap: 4px;
+  align-items: center;
 }
 
 /* Badges */
@@ -312,7 +372,7 @@ body {
 }
 
 .detail-header {
-  padding: 14px 20px;
+  padding: 12px 20px;
   border-bottom: 1px solid var(--border);
   background: var(--bg-surface);
   display: flex;
@@ -344,10 +404,20 @@ body {
   color: var(--text-primary);
 }
 
+.detail-header .watch-wf-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.detail-header .watch-wf-label .wf-part {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
 .detail-header .meta {
   font-size: 12px;
   color: var(--text-secondary);
-  margin-top: 3px;
+  margin-top: 2px;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -356,8 +426,21 @@ body {
 
 .detail-header .meta .sha-mono {
   font-family: ui-monospace, "Menlo", "Monaco", monospace;
-  color: var(--text-muted);
+  color: var(--accent);
+  text-decoration: none;
 }
+
+.detail-header .meta .sha-mono:hover {
+  text-decoration: underline;
+}
+
+.detail-header .meta .gh-link {
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 11px;
+}
+
+.detail-header .meta .gh-link:hover { color: var(--text-secondary); }
 
 .detail-header .meta .sep {
   color: var(--text-muted);
@@ -373,6 +456,28 @@ body {
   font-weight: 500;
   color: var(--text-secondary);
   font-variant-numeric: tabular-nums;
+}
+
+/* Job graph area */
+.job-graph-container {
+  min-height: 80px;
+  max-height: 220px;
+  overflow: hidden;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 16px;
+  flex-shrink: 0;
+  display: none;
+}
+
+.job-graph-container.visible {
+  display: block;
+}
+
+.job-graph-inner {
+  overflow-x: auto;
+  overflow-y: hidden;
+  height: 100%;
 }
 
 /* Log area */
@@ -432,6 +537,31 @@ body {
 }
 
 .empty-state .empty-title {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+/* No-run-selected empty state (in detail panel) */
+.no-run-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: 13px;
+  text-align: center;
+}
+
+.no-run-state .nr-logo {
+  font-size: 20px;
+  color: var(--accent);
+  margin-bottom: 2px;
+}
+
+.no-run-state .nr-title {
   font-weight: 600;
   font-size: 14px;
   color: var(--text-secondary);
@@ -957,6 +1087,36 @@ select.form-input {
   padding-right: 28px;
   cursor: pointer;
 }
+
+/* YAML editor */
+.yaml-editor {
+  width: 100%;
+  min-height: 400px;
+  font-family: ui-monospace, "JetBrains Mono", "Fira Code", monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  background: var(--bg-base);
+  color: var(--text-mono);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 12px;
+  resize: vertical;
+  tab-size: 2;
+}
+
+.yaml-editor:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.yaml-status {
+  font-size: 12px;
+  min-height: 18px;
+  padding-top: 2px;
+}
+
+.yaml-status.ok { color: var(--status-success); }
+.yaml-status.err { color: var(--status-failure); }
 </style>
 </head>
 <body>
@@ -1018,17 +1178,21 @@ select.form-input {
       live
     </div>
     <span class="header-username" id="headerUsername"></span>
-    <button class="btn btn-icon" title="Settings" onclick="openSettings()">&#9881;</button>
+    <button class="btn" title="Settings" onclick="openSettings()">&#9881; Settings</button>
     <button class="btn" onclick="handleLogout()">Log out</button>
   </div>
 </header>
 
 <div class="app-body" id="appBody" style="display:none">
   <aside class="sidebar" id="sidebar">
-    <div class="sidebar-header">Runs</div>
+    <div class="sidebar-header">
+      <span>Runs</span>
+      <span class="sidebar-count" id="runsCount">0</span>
+    </div>
     <div class="run-list" id="runList">
       <div class="run-list-empty">Loading&hellip;</div>
     </div>
+    <div class="sidebar-footer">j/k to navigate</div>
   </aside>
 
   <main class="detail" id="detail">
@@ -1037,13 +1201,18 @@ select.form-input {
         <div class="title-row">
           <span class="back-btn" id="backBtn" onclick="closeSidebar()">&#8592; Runs</span>
           <span class="badge" id="detailBadge"></span>
-          <span class="detail-title title" id="detailTitle"></span>
+          <span class="watch-wf-label" id="detailWatchWf"></span>
         </div>
         <div class="meta" id="detailMeta"></div>
       </div>
       <div class="right">
         <div class="duration" id="detailDuration"></div>
       </div>
+    </div>
+
+    <!-- Job graph -->
+    <div class="job-graph-container" id="jobGraphContainer">
+      <div class="job-graph-inner" id="jobGraphInner"></div>
     </div>
 
     <div class="log-wrapper" id="logWrapper">
@@ -1053,6 +1222,12 @@ select.form-input {
         <div class="empty-logo">&#9632;</div>
         <div class="empty-title">ghenkins</div>
         <div>No runs yet. Trigger a workflow<br>to see logs here.</div>
+      </div>
+      <!-- No-run-selected state -->
+      <div class="no-run-state" id="noRunState" style="display:none">
+        <div class="nr-logo">&#9632;</div>
+        <div class="nr-title">ghenkins</div>
+        <div>Select a run to view its logs.</div>
       </div>
     </div>
   </main>
@@ -1206,6 +1381,27 @@ select.form-input {
   </div>
 </div>
 
+<!-- YAML editor modal -->
+<div class="modal-overlay hidden" id="yamlModalOverlay" onclick="handleYamlOverlayClick(event)" style="z-index:120">
+  <div class="modal-panel" onclick="event.stopPropagation()" style="max-width:760px">
+    <div class="modal-header">
+      <span class="modal-title" id="yamlModalTitle">Edit YAML</span>
+      <button class="btn btn-icon" onclick="closeYamlModal()">&#10005;</button>
+    </div>
+    <div class="modal-body">
+      <div style="padding:16px;display:flex;flex-direction:column;gap:10px">
+        <div id="yamlLoadingMsg" style="font-size:12px;color:var(--text-muted)">Loading&hellip;</div>
+        <textarea class="yaml-editor" id="yamlEditorArea" style="display:none"></textarea>
+        <div class="form-actions" id="yamlEditorActions" style="display:none">
+          <div class="yaml-status" id="yamlStatus"></div>
+          <button class="btn" onclick="closeYamlModal()">Cancel</button>
+          <button class="btn btn-primary" onclick="saveYaml()">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 'use strict';
 
@@ -1221,10 +1417,17 @@ let durationIntervalId = null;
 let metaIntervalId = null;
 let currentUser = null;
 
+// Job graph state
+let jobGraphIntervalId = null;
+let selectedJobBox = null; // currently highlighted job name
+
 // Settings state
 let editingWatchName = null;  // null = adding, string = editing
 let editingWfContext = null;  // { watchName, wfName (null=adding) }
 let wfDataCache = {};         // "watchName\x00wfName" -> wf object
+
+// YAML editor state
+let yamlEditContext = null; // { watchName, wfName }
 
 // ─── Auth / Setup ────────────────────────────────────────────────────────────
 
@@ -1321,6 +1524,7 @@ async function handleLogout() {
     await fetch('/api/auth/logout', { method: 'POST' });
   } catch (_) {}
   stopPolling();
+  stopJobGraphPolling();
   currentUser = null;
   runs = [];
   selectedId = null;
@@ -1328,6 +1532,8 @@ async function handleLogout() {
   document.getElementById('detailHeader').classList.add('hidden');
   document.getElementById('logOutput').textContent = '';
   document.getElementById('emptyState').style.display = '';
+  document.getElementById('noRunState').style.display = 'none';
+  hideJobGraph();
   checkSetup();
 }
 
@@ -1381,8 +1587,7 @@ function startPolling() {
       const id = el.dataset.id;
       const run = runs.find(r => r.id === id);
       if (!run || isTerminal(run.status)) return;
-      const durClass = 'dur-' + id.replace(/[^a-zA-Z0-9_-]/g, '_');
-      const durEl = el.querySelector('.' + durClass);
+      const durEl = el.querySelector('.run-dur');
       if (durEl) durEl.textContent = formatDuration(run);
     });
     if (selectedId) {
@@ -1411,6 +1616,16 @@ function formatDuration(run) {
   if (m < 60) return m + 'm ' + s + 's';
   const h = Math.floor(m / 60), mm = m % 60;
   return h + 'h ' + mm + 'm';
+}
+
+function formatJobDuration(job) {
+  if (!job.started_at) return '';
+  const start = new Date(job.started_at);
+  const end = job.finished_at ? new Date(job.finished_at) : new Date();
+  const secs = Math.max(0, Math.floor((end - start) / 1000));
+  if (secs < 60) return secs + 's';
+  const m = Math.floor(secs / 60), s = secs % 60;
+  return m + 'm' + s + 's';
 }
 
 function formatAge(run) {
@@ -1448,11 +1663,21 @@ function setBadge(el, status) {
   el.textContent = status;
 }
 
+function makeStatusDot(status) {
+  const el = document.createElement('span');
+  el.className = 'status-dot ' + status;
+  return el;
+}
+
 // ─── Run List ─────────────────────────────────────────────────────────────────
+
+function statusStripeClass(status) {
+  return 'status-' + status;
+}
 
 function renderRunItem(run) {
   const el = document.createElement('div');
-  el.className = 'run-item';
+  el.className = 'run-item ' + statusStripeClass(run.status);
   el.dataset.id = run.id;
   el.addEventListener('click', () => selectRun(run.id));
   updateRunItemContent(el, run);
@@ -1460,20 +1685,27 @@ function renderRunItem(run) {
 }
 
 function updateRunItemContent(el, run) {
+  const repoDisplay = shortRepo(run.repo);
+  const sha7 = run.sha.slice(0, 7);
+  el.className = 'run-item ' + statusStripeClass(run.status);
+  if (run.id === selectedId) el.classList.add('selected');
   el.innerHTML = `
     <div class="row1">
-      <span class="watch-name">${esc(run.watch_name)}</span>
-      <span class="workflow-name">${esc(run.workflow_name)}</span>
+      <span class="watch-workflow">
+        ${esc(run.watch_name)}<span class="wf-sep">/</span>${esc(run.workflow_name)}
+      </span>
+      <span class="status-dot ${esc(run.status)}"></span>
     </div>
     <div class="row2">
-      <span class="repo-name">${esc(shortRepo(run.repo))}</span>
-      <span class="sha">${esc(run.sha.slice(0, 7))}</span>
-      ${makeBadgeEl(run.status).outerHTML}
-    </div>
-    <div class="row3">
-      <span class="dur-${esc(run.id)}">${formatDuration(run)}</span>
-      <span>&middot;</span>
-      <span>${formatAge(run)}</span>
+      <div class="row2-left">
+        <span class="repo-name">${esc(repoDisplay)}</span>
+        <span class="sha">@${esc(sha7)}</span>
+      </div>
+      <div class="row2-right">
+        <span class="run-dur">${formatDuration(run)}</span>
+        <span>&middot;</span>
+        <span>${formatAge(run)}</span>
+      </div>
     </div>
   `;
 }
@@ -1481,6 +1713,9 @@ function updateRunItemContent(el, run) {
 function reconcileRunList(newRuns) {
   runs = newRuns;
   const listEl = document.getElementById('runList');
+
+  // Update count badge
+  document.getElementById('runsCount').textContent = newRuns.length;
 
   if (newRuns.length === 0) {
     listEl.innerHTML = '<div class="run-list-empty">No runs yet.</div>';
@@ -1513,15 +1748,16 @@ function reconcileRunList(newRuns) {
     const run = newRuns.find(r => r.id === id);
     if (!run) return;
 
-    const badge = el.querySelector('.badge');
-    if (badge && badge.className !== 'badge ' + run.status) {
-      setBadge(badge, run.status);
-    }
+    // Update status dot class
+    const dot = el.querySelector('.status-dot');
+    if (dot) dot.className = 'status-dot ' + run.status;
 
-    const durEl = el.querySelector('.dur-' + id.replace(/[^a-zA-Z0-9_-]/g, '_'));
+    // Update status stripe
+    el.className = 'run-item ' + statusStripeClass(run.status);
+    if (id === selectedId) el.classList.add('selected');
+
+    const durEl = el.querySelector('.run-dur');
     if (durEl) durEl.textContent = formatDuration(run);
-
-    el.classList.toggle('selected', id === selectedId);
   });
 }
 
@@ -1534,6 +1770,9 @@ async function selectRun(id) {
     try { activeReader.cancel(); } catch (_) {}
     activeReader = null;
   }
+
+  stopJobGraphPolling();
+  selectedJobBox = null;
 
   selectedId = id;
   tailEnabled = true;
@@ -1550,7 +1789,12 @@ async function selectRun(id) {
   const logEl = document.getElementById('logOutput');
   logEl.textContent = '';
   document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('noRunState').style.display = 'none';
   document.getElementById('tailIndicator').classList.remove('visible');
+
+  // Show job graph
+  showJobGraph();
+  loadJobGraph(run);
 
   closeSidebar();
   streamLog(id, logEl);
@@ -1561,14 +1805,19 @@ function updateDetailHeader(run) {
   header.classList.remove('hidden');
 
   setBadge(document.getElementById('detailBadge'), run.status);
-  document.getElementById('detailTitle').textContent =
-    run.watch_name + ' / ' + run.workflow_name;
+
+  const wwEl = document.getElementById('detailWatchWf');
+  wwEl.innerHTML = `<span>${esc(run.watch_name)}</span> <span style="color:var(--text-muted)">/</span> <span class="wf-part">${esc(run.workflow_name)}</span>`;
 
   const metaEl = document.getElementById('detailMeta');
+  const repoShort = shortRepo(run.repo);
+  const sha7 = run.sha.slice(0, 7);
+  const ghCommitUrl = 'https://github.com/' + repoShort + '/commit/' + run.sha;
   metaEl.innerHTML =
-    `<span>${esc(shortRepo(run.repo))}</span>` +
+    `<span>${esc(repoShort)}</span>` +
     `<span class="sep">@</span>` +
-    `<span class="sha-mono">${esc(run.sha.slice(0, 7))}</span>` +
+    `<a class="sha-mono" href="${esc(ghCommitUrl)}" target="_blank" rel="noopener">${esc(sha7)}</a>` +
+    `<a class="gh-link" href="${esc(ghCommitUrl)}" target="_blank" rel="noopener" title="View on GitHub">&#10138;</a>` +
     `<span class="sep">&middot;</span>` +
     `<span>started ${formatAge(run)}</span>`;
 
@@ -1636,6 +1885,10 @@ async function fetchRuns() {
 
     if (selectedId === null && data.length > 0) {
       selectRun(data[0].id);
+    } else if (selectedId === null && data.length === 0) {
+      // Show no-run hint
+      document.getElementById('emptyState').style.display = '';
+      document.getElementById('noRunState').style.display = 'none';
     }
 
     document.getElementById('liveIndicator').classList.add('active');
@@ -1676,6 +1929,10 @@ document.addEventListener('keydown', e => {
 
   // Close modals on Escape regardless of focus
   if (e.key === 'Escape') {
+    if (!document.getElementById('yamlModalOverlay').classList.contains('hidden')) {
+      closeYamlModal();
+      return;
+    }
     if (!document.getElementById('wfModalOverlay').classList.contains('hidden')) {
       closeWfModal();
       return;
@@ -1857,6 +2114,7 @@ function renderWorkflowItems(w) {
         <div class="wf-item-name">${esc(wf.name)}</div>
         <div class="wf-item-sub">${esc(wf.path)}${wf.runner_image ? ' &middot; ' + esc(wf.runner_image) : ''}</div>
       </div>
+      <button class="btn btn-icon" title="Edit YAML" onclick="openYamlEditor('${esc(w.name)}', '${esc(wf.name)}')" style="font-size:11px;padding:4px 7px">YAML</button>
       <button class="btn btn-icon" title="Edit" onclick="showEditWfModalByName('${esc(w.name)}', '${esc(wf.name)}')">&#9998;</button>
       <button class="btn btn-icon btn-danger" title="Delete" onclick="deleteWorkflow('${esc(w.name)}', '${esc(wf.name)}')">&#10005;</button>
     </div>
@@ -2090,6 +2348,83 @@ async function deleteWorkflow(watchName, wfName) {
   }
 }
 
+// ─── YAML editor ─────────────────────────────────────────────────────────────
+
+async function openYamlEditor(watchName, wfName) {
+  yamlEditContext = { watchName, wfName };
+  const titleEl = document.getElementById('yamlModalTitle');
+  titleEl.textContent = 'Editing YAML \u2014 ' + watchName + ' / ' + wfName;
+
+  const loadMsg = document.getElementById('yamlLoadingMsg');
+  const textarea = document.getElementById('yamlEditorArea');
+  const actions = document.getElementById('yamlEditorActions');
+  const statusEl = document.getElementById('yamlStatus');
+
+  loadMsg.style.display = '';
+  textarea.style.display = 'none';
+  actions.style.display = 'none';
+  statusEl.textContent = '';
+  statusEl.className = 'yaml-status';
+
+  document.getElementById('yamlModalOverlay').classList.remove('hidden');
+
+  try {
+    const res = await fetch(
+      '/api/watches/' + encodeURIComponent(watchName) + '/workflows/' + encodeURIComponent(wfName) + '/content'
+    );
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const text = await res.text();
+    textarea.value = text;
+    loadMsg.style.display = 'none';
+    textarea.style.display = '';
+    actions.style.display = 'flex';
+    textarea.focus();
+  } catch (e) {
+    loadMsg.textContent = 'Failed to load YAML: ' + e.message;
+    loadMsg.style.color = 'var(--status-failure)';
+  }
+}
+
+function closeYamlModal() {
+  document.getElementById('yamlModalOverlay').classList.add('hidden');
+  yamlEditContext = null;
+}
+
+function handleYamlOverlayClick(e) {
+  if (e.target === document.getElementById('yamlModalOverlay')) {
+    closeYamlModal();
+  }
+}
+
+async function saveYaml() {
+  if (!yamlEditContext) return;
+  const { watchName, wfName } = yamlEditContext;
+  const content = document.getElementById('yamlEditorArea').value;
+  const statusEl = document.getElementById('yamlStatus');
+  statusEl.textContent = 'Saving\u2026';
+  statusEl.className = 'yaml-status';
+
+  try {
+    const res = await fetch(
+      '/api/watches/' + encodeURIComponent(watchName) + '/workflows/' + encodeURIComponent(wfName) + '/content',
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'text/plain' },
+        body: content,
+      }
+    );
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      throw new Error(d.error || 'HTTP ' + res.status);
+    }
+    statusEl.textContent = 'Saved.';
+    statusEl.className = 'yaml-status ok';
+  } catch (e) {
+    statusEl.textContent = 'Error: ' + e.message;
+    statusEl.className = 'yaml-status err';
+  }
+}
+
 // ─── Key-value helpers ────────────────────────────────────────────────────────
 
 function addKvRow(listId, key, value) {
@@ -2237,6 +2572,424 @@ async function showChangePassword(id) {
   }
 }
 
+// ─── Job Graph ────────────────────────────────────────────────────────────────
+
+const BOX_W = 140, BOX_H = 44, GAP_X = 80, GAP_Y = 16, PAD = 20;
+
+function parseWorkflowJobs(yamlText) {
+  const jobs = {};
+  let currentJob = null;
+  let inJobs = false;
+  let inNeeds = false;
+
+  for (const line of yamlText.split('\n')) {
+    if (line.match(/^jobs\s*:/)) { inJobs = true; continue; }
+    if (!inJobs) continue;
+
+    // Top-level job key (2 spaces indent, not 4+)
+    const jobMatch = line.match(/^  (\w[\w-]*)\s*:/);
+    if (jobMatch && !line.match(/^\s{4}/)) {
+      currentJob = jobMatch[1];
+      jobs[currentJob] = { needs: [] };
+      inNeeds = false;
+      continue;
+    }
+
+    if (!currentJob) continue;
+
+    // needs: single value or inline list
+    const needsInline = line.match(/^\s+needs\s*:\s*(.+)/);
+    if (needsInline) {
+      const val = needsInline[1].trim();
+      if (val.startsWith('[')) {
+        jobs[currentJob].needs = val.replace(/[\[\]'"\s]/g, '').split(',').filter(Boolean);
+      } else {
+        jobs[currentJob].needs = [val.replace(/['"]/g, '')];
+      }
+      inNeeds = false;
+      continue;
+    }
+
+    // needs: as list
+    if (line.match(/^\s+needs\s*:$/)) { inNeeds = true; continue; }
+    if (inNeeds && line.match(/^\s+-\s+/)) {
+      jobs[currentJob].needs.push(line.replace(/^\s+-\s+/, '').replace(/['"]/g, '').trim());
+      continue;
+    }
+    if (inNeeds && !line.match(/^\s+-/)) { inNeeds = false; }
+  }
+  return jobs;
+}
+
+function topoLevels(nodeNames, deps) {
+  // deps: { name: [depName, ...] } — deps are things this node depends ON (needs)
+  const levels = {};
+  const visited = new Set();
+
+  function visit(name, depth) {
+    if (levels[name] !== undefined) {
+      if (depth > levels[name]) levels[name] = depth;
+    } else {
+      levels[name] = depth;
+    }
+    const children = Object.keys(deps).filter(n => (deps[n] || []).includes(name));
+    children.forEach(c => visit(c, levels[name] + 1));
+  }
+
+  // Find roots (no dependencies)
+  const roots = nodeNames.filter(n => !deps[n] || deps[n].length === 0);
+  roots.forEach(r => visit(r, 0));
+
+  // Any nodes not yet visited (isolated or cycles)
+  nodeNames.forEach(n => { if (levels[n] === undefined) levels[n] = 0; });
+
+  return levels;
+}
+
+function statusColor(status) {
+  const map = {
+    pending:  { border: 'var(--border)',         bg: 'var(--bg-elevated)',      text: 'var(--text-secondary)' },
+    running:  { border: 'var(--status-running)',  bg: 'var(--status-running-bg)', text: 'var(--status-running)' },
+    success:  { border: 'var(--status-success)',  bg: 'var(--status-success-bg)', text: 'var(--status-success)' },
+    failure:  { border: 'var(--status-failure)',  bg: 'var(--status-failure-bg)', text: 'var(--status-failure)' },
+    skipped:  { border: 'var(--border)',          bg: 'var(--bg-surface)',        text: 'var(--text-muted)' },
+    queued:   { border: 'var(--border)',          bg: 'var(--bg-elevated)',       text: 'var(--text-secondary)' },
+    error:    { border: 'var(--status-error)',    bg: 'var(--status-error-bg)',   text: 'var(--status-error)' },
+    canceled: { border: 'var(--border)',          bg: 'var(--bg-elevated)',       text: 'var(--text-muted)' },
+  };
+  return map[status] || map['pending'];
+}
+
+function statusDotFill(status) {
+  const map = {
+    pending: '#444444',
+    running: '#3b82f6',
+    success: '#22c55e',
+    failure: '#ef4444',
+    skipped: '#444444',
+    queued:  '#ca8a04',
+    error:   '#f97316',
+    canceled:'#6b7280',
+  };
+  return map[status] || '#444444';
+}
+
+function renderJobGraph(containerId, jobs, workflowJobs) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  container.innerHTML = '';
+
+  // Build node list
+  let nodeNames = [];
+  let deps = {}; // name -> [needs...]
+
+  if (workflowJobs && Object.keys(workflowJobs).length > 0) {
+    nodeNames = Object.keys(workflowJobs);
+    deps = {};
+    nodeNames.forEach(n => { deps[n] = workflowJobs[n].needs || []; });
+  } else if (jobs && jobs.length > 0) {
+    nodeNames = jobs.map(j => j.job_name);
+    deps = {};
+    nodeNames.forEach(n => { deps[n] = []; });
+  } else {
+    // Fallback: show run status box
+    const run = selectedId ? runs.find(r => r.id === selectedId) : null;
+    const label = run ? (run.workflow_name || 'workflow') : 'workflow';
+    const status = run ? run.status : 'pending';
+    const c = statusColor(status);
+    const svgNS = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(svgNS, 'svg');
+    svg.setAttribute('width', BOX_W + PAD * 2);
+    svg.setAttribute('height', BOX_H + PAD * 2);
+    svg.setAttribute('viewBox', '0 0 ' + (BOX_W + PAD * 2) + ' ' + (BOX_H + PAD * 2));
+    appendJobBox(svg, PAD, PAD, label, status, '', false, null, svgNS, c);
+    container.appendChild(svg);
+    return;
+  }
+
+  const levels = topoLevels(nodeNames, deps);
+
+  // Group by level
+  const byLevel = {};
+  nodeNames.forEach(n => {
+    const lv = levels[n] || 0;
+    if (!byLevel[lv]) byLevel[lv] = [];
+    byLevel[lv].push(n);
+  });
+  const maxLevel = Math.max(...Object.keys(byLevel).map(Number));
+  const maxColHeight = Math.max(...Object.values(byLevel).map(arr => arr.length));
+
+  const totalW = (maxLevel + 1) * (BOX_W + GAP_X) - GAP_X + PAD * 2;
+  const totalH = maxColHeight * (BOX_H + GAP_Y) - GAP_Y + PAD * 2;
+
+  const svgNS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(svgNS, 'svg');
+  svg.setAttribute('width', totalW);
+  svg.setAttribute('height', totalH);
+  svg.setAttribute('viewBox', '0 0 ' + totalW + ' ' + totalH);
+  svg.style.display = 'block';
+
+  // Compute positions
+  const positions = {}; // name -> {x, y, cx, cy}
+  Object.keys(byLevel).forEach(lv => {
+    const col = byLevel[lv];
+    const colH = col.length * BOX_H + (col.length - 1) * GAP_Y;
+    const startY = PAD + (maxColHeight * (BOX_H + GAP_Y) - GAP_Y - colH) / 2;
+    col.forEach((name, idx) => {
+      const x = PAD + Number(lv) * (BOX_W + GAP_X);
+      const y = startY + idx * (BOX_H + GAP_Y);
+      positions[name] = { x, y, cx: x + BOX_W / 2, cy: y + BOX_H / 2 };
+    });
+  });
+
+  // Draw arrows first (behind boxes)
+  nodeNames.forEach(name => {
+    const pos = positions[name];
+    if (!pos) return;
+    (deps[name] || []).forEach(dep => {
+      const depPos = positions[dep];
+      if (!depPos) return;
+      // Arrow from dep's right edge to name's left edge
+      const x1 = depPos.x + BOX_W;
+      const y1 = depPos.cy;
+      const x2 = pos.x;
+      const y2 = pos.cy;
+      const cx1 = x1 + 40;
+      const cx2 = x2 - 40;
+
+      const path = document.createElementNS(svgNS, 'path');
+      path.setAttribute('d', `M ${x1},${y1} C ${cx1},${y1} ${cx2},${y2} ${x2},${y2}`);
+      path.setAttribute('fill', 'none');
+      path.setAttribute('stroke', '#333333');
+      path.setAttribute('stroke-width', '1.5');
+      path.setAttribute('marker-end', 'url(#arrowhead)');
+      svg.appendChild(path);
+    });
+  });
+
+  // Arrow marker def
+  const defs = document.createElementNS(svgNS, 'defs');
+  const marker = document.createElementNS(svgNS, 'marker');
+  marker.setAttribute('id', 'arrowhead');
+  marker.setAttribute('markerWidth', '7');
+  marker.setAttribute('markerHeight', '7');
+  marker.setAttribute('refX', '6');
+  marker.setAttribute('refY', '3.5');
+  marker.setAttribute('orient', 'auto');
+  const arrowPoly = document.createElementNS(svgNS, 'polygon');
+  arrowPoly.setAttribute('points', '0 0, 7 3.5, 0 7');
+  arrowPoly.setAttribute('fill', '#333333');
+  marker.appendChild(arrowPoly);
+  defs.appendChild(marker);
+  svg.insertBefore(defs, svg.firstChild);
+
+  // Draw job boxes
+  nodeNames.forEach(name => {
+    const pos = positions[name];
+    if (!pos) return;
+    const jobData = jobs ? jobs.find(j => j.job_name === name) : null;
+    const status = jobData ? jobData.status : 'pending';
+    const dur = jobData ? formatJobDuration(jobData) : '';
+    const isSelected = selectedJobBox === name;
+    const c = statusColor(status);
+    appendJobBox(svg, pos.x, pos.y, name, status, dur, isSelected, name, svgNS, c);
+  });
+
+  container.appendChild(svg);
+}
+
+function appendJobBox(svg, x, y, label, status, dur, isSelected, clickName, svgNS, c) {
+  const g = document.createElementNS(svgNS, 'g');
+  g.style.cursor = clickName ? 'pointer' : 'default';
+
+  // Background rect
+  const rect = document.createElementNS(svgNS, 'rect');
+  rect.setAttribute('x', x);
+  rect.setAttribute('y', y);
+  rect.setAttribute('width', BOX_W);
+  rect.setAttribute('height', BOX_H);
+  rect.setAttribute('rx', '6');
+  rect.setAttribute('ry', '6');
+  rect.setAttribute('fill', c.bg);
+  rect.setAttribute('stroke', c.border);
+  rect.setAttribute('stroke-width', isSelected ? '2.5' : '1.5');
+  g.appendChild(rect);
+
+  // Status dot
+  const dotR = 4;
+  const dotCx = x + 14;
+  const dotCy = y + BOX_H / 2;
+  const dot = document.createElementNS(svgNS, 'circle');
+  dot.setAttribute('cx', dotCx);
+  dot.setAttribute('cy', dotCy);
+  dot.setAttribute('r', dotR);
+  dot.setAttribute('fill', statusDotFill(status));
+  g.appendChild(dot);
+
+  // Job name (truncated via SVG)
+  const nameText = document.createElementNS(svgNS, 'text');
+  nameText.setAttribute('x', x + 26);
+  nameText.setAttribute('y', y + BOX_H / 2 + (dur ? -4 : 5));
+  nameText.setAttribute('fill', c.text);
+  nameText.setAttribute('font-size', '11');
+  nameText.setAttribute('font-family', '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif');
+  nameText.setAttribute('font-weight', '500');
+  nameText.setAttribute('dominant-baseline', 'middle');
+  // Truncate label to fit
+  const maxChars = 12;
+  const displayLabel = label.length > maxChars ? label.slice(0, maxChars - 1) + '\u2026' : label;
+  nameText.textContent = displayLabel;
+  g.appendChild(nameText);
+
+  // Duration (bottom-right)
+  if (dur) {
+    const durText = document.createElementNS(svgNS, 'text');
+    durText.setAttribute('x', x + BOX_W - 6);
+    durText.setAttribute('y', y + BOX_H - 7);
+    durText.setAttribute('fill', '#555555');
+    durText.setAttribute('font-size', '9');
+    durText.setAttribute('font-family', 'ui-monospace, monospace');
+    durText.setAttribute('text-anchor', 'end');
+    durText.textContent = dur;
+    g.appendChild(durText);
+  }
+
+  // Click handler
+  if (clickName) {
+    g.addEventListener('click', () => onJobBoxClick(clickName));
+  }
+
+  svg.appendChild(g);
+}
+
+function onJobBoxClick(jobName) {
+  selectedJobBox = jobName;
+
+  // Re-render graph to update highlight
+  const run = selectedId ? runs.find(r => r.id === selectedId) : null;
+  if (run) {
+    // Re-render with current cached data
+    const graphContainer = document.getElementById('jobGraphInner');
+    if (graphContainer) {
+      renderJobGraph('jobGraphInner', _lastJobsData, _lastWorkflowJobs);
+    }
+  }
+
+  // Scroll log to nearest "## job: {name}" or "## running job {name}" line
+  const logOutputEl = document.getElementById('logOutput');
+  const text = logOutputEl.textContent;
+  const lines = text.split('\n');
+  const patterns = [
+    new RegExp('##\\s+job:\\s*' + jobName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'),
+    new RegExp('##\\s+running job\\s+' + jobName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'),
+  ];
+
+  let charOffset = 0;
+  let foundOffset = -1;
+  for (let i = 0; i < lines.length; i++) {
+    if (patterns.some(p => p.test(lines[i]))) {
+      foundOffset = charOffset;
+      break;
+    }
+    charOffset += lines[i].length + 1;
+  }
+
+  if (foundOffset >= 0) {
+    // Approximate scroll: use a temporary marker
+    const range = document.createRange();
+    const walker = document.createTreeWalker(logOutputEl, NodeFilter.SHOW_TEXT);
+    let node, remaining = foundOffset;
+    while ((node = walker.nextNode())) {
+      if (remaining <= node.textContent.length) {
+        range.setStart(node, remaining);
+        range.collapse(true);
+        break;
+      }
+      remaining -= node.textContent.length;
+    }
+    if (range.startContainer !== logOutputEl) {
+      const span = document.createElement('span');
+      range.insertNode(span);
+      span.scrollIntoView({ block: 'center' });
+      span.remove();
+      tailEnabled = false;
+    }
+  }
+}
+
+// Cache last graph data for re-renders on click
+let _lastJobsData = null;
+let _lastWorkflowJobs = null;
+
+function showJobGraph() {
+  document.getElementById('jobGraphContainer').classList.add('visible');
+}
+
+function hideJobGraph() {
+  document.getElementById('jobGraphContainer').classList.remove('visible');
+  document.getElementById('jobGraphInner').innerHTML = '';
+  _lastJobsData = null;
+  _lastWorkflowJobs = null;
+}
+
+async function loadJobGraph(run) {
+  if (!run) return;
+
+  let jobsData = [];
+  let workflowJobs = null;
+
+  // Fetch jobs
+  try {
+    const res = await fetch('/runs/' + run.id + '/jobs');
+    if (res.ok) {
+      jobsData = await res.json();
+    }
+  } catch (_) {}
+
+  // Fetch workflow YAML
+  try {
+    const res = await fetch(
+      '/api/watches/' + encodeURIComponent(run.watch_name) +
+      '/workflows/' + encodeURIComponent(run.workflow_name) + '/content'
+    );
+    if (res.ok) {
+      const yamlText = await res.text();
+      workflowJobs = parseWorkflowJobs(yamlText);
+    }
+  } catch (_) {}
+
+  _lastJobsData = jobsData;
+  _lastWorkflowJobs = workflowJobs;
+  renderJobGraph('jobGraphInner', jobsData, workflowJobs);
+
+  // Start polling if run is active
+  stopJobGraphPolling();
+  if (!isTerminal(run.status)) {
+    jobGraphIntervalId = setInterval(async () => {
+      const currentRun = runs.find(r => r.id === run.id);
+      if (!currentRun || selectedId !== run.id) {
+        stopJobGraphPolling();
+        return;
+      }
+      try {
+        const res = await fetch('/runs/' + run.id + '/jobs');
+        if (res.ok) {
+          _lastJobsData = await res.json();
+          renderJobGraph('jobGraphInner', _lastJobsData, _lastWorkflowJobs);
+        }
+      } catch (_) {}
+      if (isTerminal(currentRun.status)) stopJobGraphPolling();
+    }, 3000);
+  }
+}
+
+function stopJobGraphPolling() {
+  if (jobGraphIntervalId) {
+    clearInterval(jobGraphIntervalId);
+    jobGraphIntervalId = null;
+  }
+}
+
 // ─── Utils ────────────────────────────────────────────────────────────────────
 
 function esc(str) {
@@ -2260,6 +3013,10 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('setupConfirm').addEventListener('keydown', e => {
     if (e.key === 'Enter') handleSetup();
   });
+
+  // Show no-run-selected state initially (will be replaced on first fetch if runs exist)
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('noRunState').style.display = 'flex';
 
   checkSetup();
 });

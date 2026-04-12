@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"time"
 
 	"github.com/rs/zerolog"
 	"github.com/trusch/ghenkins/internal/config"
@@ -102,12 +103,16 @@ func (r *ActRunner) Run(ctx context.Context, j poller.Job, wf config.WorkflowRef
 	return 0, nil
 }
 
+// JobCallback is called after each job completes or is skipped.
+type JobCallback func(jobName string, status JobStatus, startedAt, finishedAt time.Time)
+
 // PodmanRunner runs workflows natively in Podman containers.
 type PodmanRunner struct {
 	cacheDir     string // ~/.cache/ghenkins/repos
 	podmanSock   string // empty = auto-detect
 	defaultImage string // fallback image when runs-on is not a valid image
 	log          zerolog.Logger
+	JobCallback  JobCallback // called after each job completes (or is skipped)
 }
 
 // NewPodman creates a PodmanRunner. defaultImage is used when the workflow does not specify
@@ -226,12 +231,26 @@ func (r *PodmanRunner) Run(ctx context.Context, j poller.Job, wf config.Workflow
 			}
 			if depFailed {
 				fmt.Fprintf(logWriter, "## skipping job %s: a required dependency failed\n", jobID)
+				if r.JobCallback != nil {
+					r.JobCallback(jobID, JobStatusSkipped, time.Time{}, time.Time{})
+				}
 				continue
 			}
 
+			jobStartedAt := time.Now()
+			if r.JobCallback != nil {
+				r.JobCallback(jobID, JobStatusRunning, jobStartedAt, time.Time{})
+			}
 			result, err := jobRunner.RunJob(ctx, jobID, job, workflow, info, resolvedSecrets, logWriter, imageForRun)
+			jobFinishedAt := time.Now()
 			if err != nil {
+				if r.JobCallback != nil {
+					r.JobCallback(jobID, JobStatusFailure, jobStartedAt, jobFinishedAt)
+				}
 				return 0, fmt.Errorf("RunJob %s: %w", jobID, err)
+			}
+			if r.JobCallback != nil {
+				r.JobCallback(jobID, result.Status, jobStartedAt, jobFinishedAt)
 			}
 			if result.Status == JobStatusFailure {
 				exitCode = 1
