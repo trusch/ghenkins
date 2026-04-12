@@ -156,6 +156,10 @@ func (r *PodmanRunner) Run(ctx context.Context, j poller.Job, wf config.Workflow
 			return 0, fmt.Errorf("resolve branch %s HEAD: %w\n%s", j.Branch, rerr, out)
 		}
 		sha = strings.TrimSpace(string(out))
+		// Update the DB record so the UI shows the real commit SHA.
+		if r.Store != nil && r.CurrentRunID != "" {
+			_ = r.Store.UpdateRunSHA(ctx, r.CurrentRunID, sha)
+		}
 	}
 	shortSHA := sha
 	if len(shortSHA) > 7 {

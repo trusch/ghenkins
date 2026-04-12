@@ -110,6 +110,7 @@ type RunArtifact struct {
 type Store interface {
 	CreateRun(ctx context.Context, r *Run) error
 	UpdateRunStatus(ctx context.Context, id string, status RunStatus, exitCode *int, finishedAt *time.Time) error
+	UpdateRunSHA(ctx context.Context, id, sha string) error
 	GetRun(ctx context.Context, id string) (*Run, error)
 	ListRuns(ctx context.Context, limit int) ([]Run, error)
 	DeleteRun(ctx context.Context, id string) error
@@ -200,6 +201,16 @@ func (s *SQLiteStore) CreateRun(ctx context.Context, r *Run) error {
 	)
 	if err != nil {
 		return fmt.Errorf("create run: %w", err)
+	}
+	return nil
+}
+
+func (s *SQLiteStore) UpdateRunSHA(ctx context.Context, id, sha string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	_, err := s.db.ExecContext(ctx, `UPDATE runs SET sha = ? WHERE id = ?`, sha, id)
+	if err != nil {
+		return fmt.Errorf("update run sha: %w", err)
 	}
 	return nil
 }
