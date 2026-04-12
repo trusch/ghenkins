@@ -148,7 +148,11 @@ func (r *PodmanRunner) Run(ctx context.Context, j poller.Job, wf config.Workflow
 	}
 
 	// 4. Read and parse the workflow YAML
-	wfData, err := os.ReadFile(filepath.Join(wtDir, wf.Path))
+	wfPath := wf.Path
+	if !filepath.IsAbs(wfPath) {
+		wfPath = filepath.Join(wtDir, wfPath)
+	}
+	wfData, err := os.ReadFile(wfPath)
 	if err != nil {
 		return 0, fmt.Errorf("read workflow %s: %w", wf.Path, err)
 	}
