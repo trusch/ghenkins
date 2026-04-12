@@ -202,6 +202,24 @@ func (r *podmanJobRunner) RunJob(ctx context.Context, jobID string, job *Job, wf
 		})
 	}
 
+	// Mount the bare clone into the container at the same path so that git
+	// inside the container can follow the worktree .git file reference.
+	if gitFileData, err := os.ReadFile(filepath.Join(r.WorkspaceDir, ".git")); err == nil {
+		line := strings.TrimSpace(string(gitFileData))
+		if ref, ok := strings.CutPrefix(line, "gitdir:"); ok {
+			// ref is like /path/to/bare.git/worktrees/wt-name
+			// The bare clone is two levels up from that.
+			bareCloneDir := filepath.Dir(filepath.Dir(strings.TrimSpace(ref)))
+			if _, statErr := os.Stat(bareCloneDir); statErr == nil {
+				extraBinds = append(extraBinds, BindMount{
+					HostPath:      bareCloneDir,
+					ContainerPath: bareCloneDir,
+					ReadOnly:      true,
+				})
+			}
+		}
+	}
+
 	// Per-run artifact dir: steps write to /artifacts/, we collect after run
 	artifactDir := filepath.Join(r.cacheDir, "artifacts", info.RunID)
 	_ = os.MkdirAll(artifactDir, 0o755)
