@@ -162,6 +162,16 @@ func (r *podmanJobRunner) RunJob(ctx context.Context, jobID string, job *Job, wf
 	actionCacheDir := filepath.Join(r.cacheDir, "actions")
 	extraBinds := r.resolveExtraBinds(ctx, job.Steps, execCtx, info, actionCacheDir)
 
+	// Append persistent Go module + build caches so downloads survive across runs.
+	goModCache := filepath.Join(r.cacheDir, "go", "pkg", "mod")
+	goBuildCache := filepath.Join(r.cacheDir, "go", "build-cache")
+	_ = os.MkdirAll(goModCache, 0o755)
+	_ = os.MkdirAll(goBuildCache, 0o755)
+	extraBinds = append(extraBinds,
+		BindMount{HostPath: goModCache, ContainerPath: "/root/go/pkg/mod"},
+		BindMount{HostPath: goBuildCache, ContainerPath: "/root/.cache/go/build"},
+	)
+
 	// 10. Create + start container
 	containerName := fmt.Sprintf("ghenkins-%s-%d", sanitizeName(jobID), time.Now().UnixNano())
 	container, err := CreateContainer(r.conn, ContainerConfig{
