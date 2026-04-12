@@ -261,8 +261,14 @@ func (r *podmanJobRunner) RunJob(ctx context.Context, jobID string, job *Job, wf
 			continue
 		}
 
+		stepName := step.Name
+		if stepName == "" {
+			stepName = stepID
+		}
+		fmt.Fprintf(logWriter, "\n## >> Step: %s\n", stepName)
 		result, stepErr := r.RunStep(ctx, step, container, execCtx, info, envFiles, logWriter)
 		if stepErr != nil {
+			fmt.Fprintf(logWriter, "## !! Step '%s' error: %v\n", stepName, stepErr)
 			result = StepResult{Outcome: "failure", Conclusion: "failure"}
 		}
 
