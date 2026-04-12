@@ -138,16 +138,18 @@ func (r *PodmanRunner) Run(ctx context.Context, j poller.Job, wf config.Workflow
 	}
 
 	// 2. Ensure bare clone and create worktree
+	fmt.Fprintf(logWriter, "## Cloning/fetching %s/%s...\n", j.Owner, j.RepoName)
 	bareDir, err := ensureBareClone(ctx, r.cacheDir, j.Owner, j.RepoName)
 	if err != nil {
 		return 0, fmt.Errorf("ensureBareClone: %w", err)
 	}
-
+	fmt.Fprintf(logWriter, "## Checking out %s...\n", j.SHA[:7])
 	wtDir, cleanup, err := addWorktree(ctx, bareDir, j.SHA)
 	if err != nil {
 		return 0, fmt.Errorf("addWorktree: %w", err)
 	}
 	defer cleanup()
+	fmt.Fprintf(logWriter, "## Workspace ready at %s\n", wtDir)
 
 	// 3. Generate event JSON and write to temp file
 	eventJSON, err := GenerateEventJSON(j.Repo, j.Owner, j.RepoName, j.SHA, j.Branch, j.PRNumber, j.EventType)

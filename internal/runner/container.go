@@ -53,8 +53,13 @@ func Connect(ctx context.Context) (context.Context, error) {
 
 // PullImage pulls an image if not already present. Streams pull progress to logWriter.
 func PullImage(conn context.Context, image string, logWriter io.Writer) error {
-	_, err := images.Pull(conn, image, new(images.PullOptions).WithQuiet(true))
-	return err
+	fmt.Fprintf(logWriter, "## Pulling image %s...\n", image)
+	_, err := images.Pull(conn, image, new(images.PullOptions))
+	if err != nil {
+		return err
+	}
+	fmt.Fprintf(logWriter, "## Image ready: %s\n", image)
+	return nil
 }
 
 // CreateContainer creates a container from the given config (does not start it).

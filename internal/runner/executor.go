@@ -166,7 +166,7 @@ func (r *podmanJobRunner) RunJob(ctx context.Context, jobID string, job *Job, wf
 
 	// 9. Pre-scan steps for composite actions so their source dirs are bind-mounted.
 	actionCacheDir := filepath.Join(r.cacheDir, "actions")
-	extraBinds := r.resolveExtraBinds(ctx, job.Steps, execCtx, info, actionCacheDir)
+	extraBinds := r.resolveExtraBinds(ctx, job.Steps, execCtx, info, actionCacheDir, logWriter)
 
 	// Append persistent Go module + build caches so downloads survive across runs.
 	goModCache := filepath.Join(r.cacheDir, "go", "pkg", "mod")
@@ -208,6 +208,7 @@ func (r *podmanJobRunner) RunJob(ctx context.Context, jobID string, job *Job, wf
 
 	// 10. Create + start container
 	containerName := fmt.Sprintf("ghenkins-%s-%d", sanitizeName(jobID), time.Now().UnixNano())
+	fmt.Fprintf(logWriter, "## Creating container %s (image: %s)\n", containerName, image)
 	container, err := CreateContainer(r.conn, ContainerConfig{
 		Image:         image,
 		Name:          containerName,
@@ -226,6 +227,7 @@ func (r *podmanJobRunner) RunJob(ctx context.Context, jobID string, job *Job, wf
 		return JobResult{JobID: jobID, Status: JobStatusFailure, Steps: execCtx.StepResults},
 			fmt.Errorf("start container: %w", err)
 	}
+	fmt.Fprintf(logWriter, "## Container started: %s\n", containerName)
 
 	// 12. For each step in job.Steps
 	for i, step := range job.Steps {
@@ -437,7 +439,7 @@ func isCheckoutAction(uses string) bool {
 // to include in the container config so that action source dirs are accessible
 // inside the container at /actions/<sanitized-uses>.
 // Errors are non-fatal; unresolvable actions will surface again at execution time.
-func (r *podmanJobRunner) resolveExtraBinds(ctx context.Context, steps []*Step, execCtx *ExecutionContext, info JobInfo, actionCacheDir string) []BindMount {
+func (r *podmanJobRunner) resolveExtraBinds(ctx context.Context, steps []*Step, execCtx *ExecutionContext, info JobInfo, actionCacheDir string, logWriter io.Writer) []BindMount {
 	var binds []BindMount
 	seen := make(map[string]bool)
 	eval := execCtx.Eval
@@ -471,9 +473,12 @@ func (r *podmanJobRunner) resolveExtraBinds(ctx context.Context, steps []*Step, 
 				slash := strings.Index(ownerRepo, "/")
 				if slash >= 0 {
 					owner, repo := ownerRepo[:slash], ownerRepo[slash+1:]
+					fmt.Fprintf(logWriter, "## Cloning action %s@%s...\n", ownerRepo, ref)
 					if err := cloneActionRepo(ctx, owner, repo, ref, resolved.SourceDir); err != nil {
+						fmt.Fprintf(logWriter, "## Warning: failed to clone action %s: %v\n", resolved.Uses, err)
 						continue // will fail again at execution time
 					}
+					fmt.Fprintf(logWriter, "## Action ready: %s\n", ownerRepo)
 				}
 			}
 		}
