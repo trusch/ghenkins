@@ -138,6 +138,18 @@ body {
   overflow: hidden;
 }
 
+/* ── Hamburger ── */
+.hamburger {
+  display: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 8px;
+  color: var(--text-primary);
+  font-size: 18px;
+  line-height: 1;
+}
+
 /* ── Sidebar ── */
 #sidebar {
   width: 220px;
@@ -148,6 +160,36 @@ body {
   border-right: 1px solid var(--border);
   overflow-y: auto;
   overflow-x: hidden;
+  transition: transform 200ms ease;
+}
+
+/* ── Sidebar overlay (mobile) ── */
+#sidebarOverlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 49;
+}
+
+@media (max-width: 768px) {
+  .hamburger { display: flex; align-items: center; }
+  #sidebar {
+    position: fixed;
+    top: 48px;
+    left: 0;
+    bottom: 0;
+    z-index: 50;
+    transform: translateX(-100%);
+    width: 260px;
+  }
+  #sidebar.open {
+    transform: translateX(0);
+  }
+  #sidebar.open ~ #sidebarOverlay,
+  #sidebarOverlay.visible {
+    display: block;
+  }
 }
 
 .nav-section { padding: 8px 0; }
@@ -640,9 +682,12 @@ select.form-input {
 <div id="app">
   <!-- Header -->
   <header class="app-header">
-    <div class="logo" onclick="navigate('#dashboard')">
-      <span class="logo-mark">&#9632;</span>
-      ghenkins
+    <div style="display:flex;align-items:center;gap:8px;">
+      <button class="hamburger" id="hamburgerBtn" onclick="toggleSidebar()" aria-label="Menu">&#9776;</button>
+      <div class="logo" onclick="navigate('#dashboard')">
+        <span class="logo-mark">&#9632;</span>
+        ghenkins
+      </div>
     </div>
     <div style="display:flex;align-items:center;gap:12px;">
       <div class="live-indicator" id="liveIndicator">
@@ -657,6 +702,8 @@ select.form-input {
 
   <!-- Body -->
   <div class="app-body">
+    <!-- Sidebar overlay (mobile) -->
+    <div id="sidebarOverlay" onclick="closeSidebar()"></div>
     <!-- Sidebar -->
     <nav id="sidebar">
       <div class="nav-section">
@@ -777,7 +824,27 @@ function toast(msg, type = 'info') {
 // ── Navigation ────────────────────────────────────────────────────────────────
 
 function navigate(hash) {
+  closeSidebar();
   window.location.hash = hash;
+}
+
+function toggleSidebar() {
+  const sb = document.getElementById('sidebar');
+  const ov = document.getElementById('sidebarOverlay');
+  if (sb.classList.contains('open')) {
+    sb.classList.remove('open');
+    ov.classList.remove('visible');
+  } else {
+    sb.classList.add('open');
+    ov.classList.add('visible');
+  }
+}
+
+function closeSidebar() {
+  const sb = document.getElementById('sidebar');
+  const ov = document.getElementById('sidebarOverlay');
+  if (sb) sb.classList.remove('open');
+  if (ov) ov.classList.remove('visible');
 }
 
 function route() {
@@ -1625,18 +1692,26 @@ async function toggleYamlPanel(projectName, wfName, panelId) {
     return;
   }
   panel.classList.remove('hidden');
-  const editor = document.getElementById(panelId + '_editor');
-  const statusEl = document.getElementById(panelId + '_status');
-  if (editor) { editor.value = 'Loading...'; editor.disabled = true; }
+  // Set loading state without disabling (so user can see the textarea immediately)
+  const editorStart = document.getElementById(panelId + '_editor');
+  if (editorStart) editorStart.value = 'Loading\u2026';
   try {
     const res = await fetch(
-      '/api/projects/' + encodeURIComponent(projectName) + '/workflows/' + encodeURIComponent(wfName) + '/content'
+      '/api/projects/' + encodeURIComponent(projectName) + '/workflows/' + encodeURIComponent(wfName) + '/content',
+      { credentials: 'same-origin' }
     );
-    if (!res.ok) throw new Error('HTTP ' + res.status);
+    if (!res.ok) {
+      let detail = 'HTTP ' + res.status;
+      try { const d = await res.json(); if (d.error) detail = d.error; } catch (_) {}
+      throw new Error(detail);
+    }
     const text = await res.text();
-    if (editor) { editor.value = text; editor.disabled = false; editor.focus(); }
+    // Re-lookup in case DOM was updated while awaiting
+    const editor = document.getElementById(panelId + '_editor');
+    if (editor) { editor.value = text || ''; editor.focus(); }
   } catch (e) {
-    if (editor) { editor.value = 'Failed to load: ' + e.message; }
+    const editor = document.getElementById(panelId + '_editor');
+    if (editor) editor.value = 'Error loading file: ' + e.message;
   }
 }
 
