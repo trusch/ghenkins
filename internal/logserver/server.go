@@ -15,6 +15,7 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/trusch/ghenkins/internal/auth"
+	"github.com/trusch/ghenkins/internal/config"
 	"github.com/trusch/ghenkins/internal/store"
 )
 
@@ -131,11 +132,15 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /runs/{id}/jobs", s.authMiddleware(s.handleListRunJobs))
 
 	// Projects (new canonical routes)
-	mux.HandleFunc("GET /api/projects", s.authMiddleware(s.handleListWatches))
-	mux.HandleFunc("POST /api/projects", s.authMiddleware(s.handleCreateWatch))
-	mux.HandleFunc("GET /api/projects/{name}", s.authMiddleware(s.handleGetWatch))
-	mux.HandleFunc("PUT /api/projects/{name}", s.authMiddleware(s.handleUpdateWatch))
-	mux.HandleFunc("DELETE /api/projects/{name}", s.authMiddleware(s.handleDeleteWatch))
+	mux.HandleFunc("GET /api/projects", s.authMiddleware(s.handleListProjects))
+	mux.HandleFunc("POST /api/projects", s.authMiddleware(s.handleCreateProject))
+	mux.HandleFunc("GET /api/projects/{name}", s.authMiddleware(s.handleGetProject))
+	mux.HandleFunc("PUT /api/projects/{name}", s.authMiddleware(s.handleUpdateProject))
+	mux.HandleFunc("DELETE /api/projects/{name}", s.authMiddleware(s.handleDeleteProject))
+	mux.HandleFunc("GET /api/projects/{name}/triggers", s.authMiddleware(s.handleListTriggers))
+	mux.HandleFunc("POST /api/projects/{name}/triggers", s.authMiddleware(s.handleCreateTrigger))
+	mux.HandleFunc("PUT /api/projects/{name}/triggers/{triggerID}", s.authMiddleware(s.handleUpdateTrigger))
+	mux.HandleFunc("DELETE /api/projects/{name}/triggers/{triggerID}", s.authMiddleware(s.handleDeleteTrigger))
 	mux.HandleFunc("POST /api/projects/{name}/workflows", s.authMiddleware(s.handleCreateWorkflow))
 	mux.HandleFunc("PUT /api/projects/{name}/workflows/{wfname}", s.authMiddleware(s.handleUpdateWorkflow))
 	mux.HandleFunc("DELETE /api/projects/{name}/workflows/{wfname}", s.authMiddleware(s.handleDeleteWorkflow))
@@ -633,14 +638,14 @@ func (s *Server) handleGetWorkflowContent(w http.ResponseWriter, r *http.Request
 	watchName := r.PathValue("name")
 	wfName := r.PathValue("wfname")
 
-	watch, err := s.store.GetWatch(r.Context(), watchName)
+	project, err := s.store.GetProject(r.Context(), watchName)
 	if err != nil {
-		writeJSON(w, http.StatusNotFound, map[string]string{"error": "watch not found"})
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "project not found"})
 		return
 	}
 
 	var wfPath string
-	for _, wf := range watch.Workflows {
+	for _, wf := range project.Workflows {
 		if wf.Name == wfName {
 			wfPath = wf.Path
 			break
@@ -670,14 +675,14 @@ func (s *Server) handlePutWorkflowContent(w http.ResponseWriter, r *http.Request
 	watchName := r.PathValue("name")
 	wfName := r.PathValue("wfname")
 
-	watch, err := s.store.GetWatch(r.Context(), watchName)
+	project, err := s.store.GetProject(r.Context(), watchName)
 	if err != nil {
-		writeJSON(w, http.StatusNotFound, map[string]string{"error": "watch not found"})
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "project not found"})
 		return
 	}
 
 	var wfPath string
-	for _, wf := range watch.Workflows {
+	for _, wf := range project.Workflows {
 		if wf.Name == wfName {
 			wfPath = wf.Path
 			break
@@ -876,6 +881,198 @@ func (s *Server) handleUpdatePassword(w http.ResponseWriter, r *http.Request) {
 
 // ---- Request body types ----
 
+// ---- Project CRUD handlers ----
+
+func (s *Server) handleListProjects(w http.ResponseWriter, r *http.Request) {
+	projects, err := s.store.ListProjects(r.Context())
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal error"})
+		return
+	}
+	if projects == nil {
+		projects = []*store.DBProject{}
+	}
+	writeJSON(w, http.StatusOK, projects)
+}
+
+func (s *Server) handleCreateProject(w http.ResponseWriter, r *http.Request) {
+	var body projectRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request"})
+		return
+	}
+	if body.Name == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "name required"})
+		return
+	}
+
+	p := &store.DBProject{
+		Name:        body.Name,
+		Description: body.Description,
+		Workflows:   []*store.DBWorkflow{},
+		Triggers:    []*store.DBTrigger{},
+	}
+	for _, wb := range body.Workflows {
+		p.Workflows = append(p.Workflows, wb.toDBWorkflow(body.Name))
+	}
+
+	if err := s.store.CreateProject(r.Context(), p); err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+
+	if len(body.Workflows) == 0 {
+		wfDir := filepath.Join(s.logDir, "..", "workflows")
+		if err := os.MkdirAll(wfDir, 0o755); err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "create workflows dir: " + err.Error()})
+			return
+		}
+		wfPath := filepath.Join(wfDir, body.Name+"-hello.yaml")
+		if err := os.WriteFile(wfPath, []byte(config.HelloWorldWorkflow), 0o644); err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "write hello-world workflow: " + err.Error()})
+			return
+		}
+		wf := &store.DBWorkflow{
+			ProjectName: body.Name,
+			Name:        body.Name + "-hello",
+			Path:        wfPath,
+			Secrets:     map[string]string{},
+			Env:         map[string]string{},
+		}
+		if err := s.store.CreateWorkflow(r.Context(), wf); err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "create hello-world workflow entry: " + err.Error()})
+			return
+		}
+		p.Workflows = append(p.Workflows, wf)
+	}
+
+	writeJSON(w, http.StatusCreated, p)
+}
+
+func (s *Server) handleGetProject(w http.ResponseWriter, r *http.Request) {
+	name := r.PathValue("name")
+	p, err := s.store.GetProject(r.Context(), name)
+	if err != nil {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "not found"})
+		return
+	}
+	writeJSON(w, http.StatusOK, p)
+}
+
+func (s *Server) handleUpdateProject(w http.ResponseWriter, r *http.Request) {
+	name := r.PathValue("name")
+	var body projectRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request"})
+		return
+	}
+	p := &store.DBProject{
+		Name:        name,
+		Description: body.Description,
+	}
+	if err := s.store.UpdateProject(r.Context(), p); err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	updated, err := s.store.GetProject(r.Context(), name)
+	if err != nil {
+		writeJSON(w, http.StatusOK, p)
+		return
+	}
+	writeJSON(w, http.StatusOK, updated)
+}
+
+func (s *Server) handleDeleteProject(w http.ResponseWriter, r *http.Request) {
+	name := r.PathValue("name")
+	if err := s.store.DeleteProject(r.Context(), name); err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "deleted"})
+}
+
+// ---- Trigger CRUD handlers ----
+
+func (s *Server) handleListTriggers(w http.ResponseWriter, r *http.Request) {
+	name := r.PathValue("name")
+	p, err := s.store.GetProject(r.Context(), name)
+	if err != nil {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "project not found"})
+		return
+	}
+	triggers := p.Triggers
+	if triggers == nil {
+		triggers = []*store.DBTrigger{}
+	}
+	writeJSON(w, http.StatusOK, triggers)
+}
+
+func (s *Server) handleCreateTrigger(w http.ResponseWriter, r *http.Request) {
+	name := r.PathValue("name")
+	var body triggerRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request"})
+		return
+	}
+	if body.Type == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "type required"})
+		return
+	}
+	if (body.Type == "push" || body.Type == "pull_request") && body.Repo == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "repo required for push/pull_request triggers"})
+		return
+	}
+	t := &store.DBTrigger{
+		ProjectName: name,
+		Type:        body.Type,
+		Repo:        body.Repo,
+		Branch:      body.Branch,
+		PR:          body.PR,
+		OnEvents:    body.OnEvents,
+	}
+	if len(t.OnEvents) == 0 {
+		t.OnEvents = []string{body.Type}
+	}
+	if err := s.store.CreateTrigger(r.Context(), t); err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusCreated, t)
+}
+
+func (s *Server) handleUpdateTrigger(w http.ResponseWriter, r *http.Request) {
+	triggerID := r.PathValue("triggerID")
+	var body triggerRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request"})
+		return
+	}
+	name := r.PathValue("name")
+	t := &store.DBTrigger{
+		ID:          triggerID,
+		ProjectName: name,
+		Type:        body.Type,
+		Repo:        body.Repo,
+		Branch:      body.Branch,
+		PR:          body.PR,
+		OnEvents:    body.OnEvents,
+	}
+	if err := s.store.UpdateTrigger(r.Context(), t); err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, t)
+}
+
+func (s *Server) handleDeleteTrigger(w http.ResponseWriter, r *http.Request) {
+	triggerID := r.PathValue("triggerID")
+	if err := s.store.DeleteTrigger(r.Context(), triggerID); err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "deleted"})
+}
+
 type watchRequestBody struct {
 	Name      string                `json:"name"`
 	Repo      string                `json:"repo"`
@@ -929,6 +1126,20 @@ func (b *workflowRequestBody) toDBWorkflow(watchName string) *store.DBWorkflow {
 		wf.Env = map[string]string{}
 	}
 	return wf
+}
+
+type projectRequestBody struct {
+	Name        string                `json:"name"`
+	Description string                `json:"description"`
+	Workflows   []workflowRequestBody `json:"workflows"`
+}
+
+type triggerRequestBody struct {
+	Type     string   `json:"type"`
+	Repo     string   `json:"repo"`
+	Branch   string   `json:"branch"`
+	PR       int      `json:"pr"`
+	OnEvents []string `json:"on_events"`
 }
 
 // ---- Helpers ----
