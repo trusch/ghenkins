@@ -745,10 +745,10 @@ func (s *Server) handleGetWorkflowInputs(w http.ResponseWriter, r *http.Request)
 
 	var wfStruct struct {
 		Inputs map[string]struct {
-			Description string `yaml:"description"`
-			Default     string `yaml:"default"`
-			Required    bool   `yaml:"required"`
-			Type        string `yaml:"type"`
+			Description string `yaml:"description" json:"description"`
+			Default     string `yaml:"default"      json:"default"`
+			Required    bool   `yaml:"required"     json:"required"`
+			Type        string `yaml:"type"         json:"type"`
 		} `yaml:"inputs"`
 	}
 	if err := yaml.Unmarshal(data, &wfStruct); err != nil || wfStruct.Inputs == nil {
