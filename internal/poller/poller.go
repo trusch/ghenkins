@@ -26,6 +26,7 @@ type Job struct {
 	Branch       string // "" if PR-based
 	EventType    string // "push" | "pull_request"
 	WorkflowRefs []config.WorkflowRef
+	Inputs       map[string]string // caller-provided inputs for manual triggers
 }
 
 type WatchProvider func(ctx context.Context) ([]config.Watch, error)

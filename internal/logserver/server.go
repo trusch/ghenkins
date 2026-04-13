@@ -17,6 +17,7 @@ import (
 	"github.com/trusch/ghenkins/internal/auth"
 	"github.com/trusch/ghenkins/internal/config"
 	"github.com/trusch/ghenkins/internal/store"
+	"gopkg.in/yaml.v3"
 )
 
 //go:embed ui/index.html
@@ -24,7 +25,7 @@ var uiFS embed.FS
 
 // RunControl allows the server to trigger and cancel runs.
 type RunControl interface {
-	TriggerRun(ctx context.Context, projectName, workflowName string) (runID string, err error)
+	TriggerRun(ctx context.Context, projectName, workflowName string, inputs map[string]string) (runID string, err error)
 	CancelRun(ctx context.Context, runID string) error
 }
 
@@ -146,6 +147,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("DELETE /api/projects/{name}/workflows/{wfname}", s.authMiddleware(s.handleDeleteWorkflow))
 	mux.HandleFunc("GET /api/projects/{name}/workflows/{wfname}/content", s.authMiddleware(s.handleGetWorkflowContent))
 	mux.HandleFunc("PUT /api/projects/{name}/workflows/{wfname}/content", s.authMiddleware(s.handlePutWorkflowContent))
+	mux.HandleFunc("GET /api/projects/{name}/workflows/{wfname}/inputs", s.authMiddleware(s.handleGetWorkflowInputs))
 	mux.HandleFunc("POST /api/projects/{name}/workflows/{wfname}/trigger", s.authMiddleware(s.handleTriggerRun))
 
 	// Watches (deprecated aliases — redirect to /api/projects)
@@ -711,6 +713,52 @@ func (s *Server) handlePutWorkflowContent(w http.ResponseWriter, r *http.Request
 	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
+// handleGetWorkflowInputs reads the workflow YAML and returns its inputs: block as JSON.
+func (s *Server) handleGetWorkflowInputs(w http.ResponseWriter, r *http.Request) {
+	watchName := r.PathValue("name")
+	wfName := r.PathValue("wfname")
+
+	project, err := s.store.GetProject(r.Context(), watchName)
+	if err != nil {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "project not found"})
+		return
+	}
+
+	var wfPath string
+	for _, wf := range project.Workflows {
+		if wf.Name == wfName {
+			wfPath = wf.Path
+			break
+		}
+	}
+	if wfPath == "" {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "workflow not found"})
+		return
+	}
+
+	data, err := os.ReadFile(wfPath)
+	if err != nil {
+		// Return empty inputs if file doesn't exist yet.
+		writeJSON(w, http.StatusOK, map[string]interface{}{})
+		return
+	}
+
+	var wfStruct struct {
+		Inputs map[string]struct {
+			Description string `yaml:"description"`
+			Default     string `yaml:"default"`
+			Required    bool   `yaml:"required"`
+			Type        string `yaml:"type"`
+		} `yaml:"inputs"`
+	}
+	if err := yaml.Unmarshal(data, &wfStruct); err != nil || wfStruct.Inputs == nil {
+		writeJSON(w, http.StatusOK, map[string]interface{}{})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, wfStruct.Inputs)
+}
+
 // ---- Run control handlers ----
 
 func (s *Server) handleTriggerRun(w http.ResponseWriter, r *http.Request) {
@@ -720,7 +768,14 @@ func (s *Server) handleTriggerRun(w http.ResponseWriter, r *http.Request) {
 	}
 	projectName := r.PathValue("name")
 	wfName := r.PathValue("wfname")
-	_, err := s.rc.TriggerRun(r.Context(), projectName, wfName)
+
+	var body struct {
+		Inputs map[string]string `json:"inputs"`
+	}
+	// Inputs are optional; ignore decode errors (e.g. empty body).
+	json.NewDecoder(r.Body).Decode(&body) //nolint:errcheck
+
+	_, err := s.rc.TriggerRun(r.Context(), projectName, wfName, body.Inputs)
 	if err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 		return

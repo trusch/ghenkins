@@ -31,6 +31,7 @@ type JobInfo struct {
 	PRNumber     int    // 0 if not a PR
 	HeadRef      string // PR head branch (empty if push)
 	BaseRef      string // PR base branch (empty if push)
+	Inputs       map[string]string // workflow inputs (merged defaults + caller-provided)
 }
 
 // JobResult is the outcome of running a single job.
@@ -592,6 +593,12 @@ func buildInitialEnv(wf *Workflow, jobID string, job *Job, info *JobInfo) map[st
 	if info.EventName == "pull_request" {
 		env["GITHUB_HEAD_REF"] = info.HeadRef
 		env["GITHUB_BASE_REF"] = info.BaseRef
+	}
+
+	// Inject workflow inputs as INPUT_<NAME> env vars.
+	for name, val := range info.Inputs {
+		key := "INPUT_" + strings.ToUpper(strings.ReplaceAll(name, "-", "_"))
+		env[key] = val
 	}
 
 	return env

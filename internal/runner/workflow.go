@@ -6,12 +6,20 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+type WorkflowInput struct {
+	Description string `yaml:"description"`
+	Default     string `yaml:"default"`
+	Required    bool   `yaml:"required"`
+	Type        string `yaml:"type"` // "string" (default), future: "boolean", "number"
+}
+
 type Workflow struct {
-	Name     string            `yaml:"name"`
-	On       interface{}       `yaml:"on"`
-	Env      map[string]string `yaml:"env"`
-	Defaults *Defaults         `yaml:"defaults"`
-	Jobs     map[string]*Job   `yaml:"jobs"`
+	Name     string                    `yaml:"name"`
+	On       interface{}               `yaml:"on"`
+	Env      map[string]string         `yaml:"env"`
+	Defaults *Defaults                 `yaml:"defaults"`
+	Jobs     map[string]*Job           `yaml:"jobs"`
+	Inputs   map[string]WorkflowInput  `yaml:"inputs"`
 }
 
 type Defaults struct {

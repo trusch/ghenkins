@@ -4,6 +4,6 @@ import "context"
 
 // RunControl allows the HTTP server to trigger and cancel runs.
 type RunControl interface {
-	TriggerRun(ctx context.Context, projectName, workflowName string) (runID string, err error)
+	TriggerRun(ctx context.Context, projectName, workflowName string, inputs map[string]string) (runID string, err error)
 	CancelRun(ctx context.Context, runID string) error
 }

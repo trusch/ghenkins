@@ -218,6 +218,17 @@ func (r *PodmanRunner) Run(ctx context.Context, j poller.Job, wf config.Workflow
 	if runID == "" {
 		runID = newRunID()
 	}
+	// Merge declared workflow input defaults with caller-provided values.
+	mergedInputs := make(map[string]string)
+	for name, decl := range workflow.Inputs {
+		if decl.Default != "" {
+			mergedInputs[name] = decl.Default
+		}
+	}
+	for k, v := range j.Inputs {
+		mergedInputs[k] = v
+	}
+
 	info := JobInfo{
 		SHA:          j.SHA,
 		Ref:          ref,
@@ -231,6 +242,7 @@ func (r *PodmanRunner) Run(ctx context.Context, j poller.Job, wf config.Workflow
 		Actor:        "ghenkins",
 		EventPayload: eventJSON,
 		PRNumber:     j.PRNumber,
+		Inputs:       mergedInputs,
 	}
 
 	// 8. Build job execution order

@@ -401,7 +401,7 @@ func (d *Daemon) runJob(ctx context.Context, j poller.Job, wf config.WorkflowRef
 }
 
 // TriggerRun implements RunControl. It enqueues a manual job for the given project/workflow.
-func (d *Daemon) TriggerRun(ctx context.Context, projectName, workflowName string) (string, error) {
+func (d *Daemon) TriggerRun(ctx context.Context, projectName, workflowName string, inputs map[string]string) (string, error) {
 	project, err := d.store.GetProject(ctx, projectName)
 	if err != nil {
 		return "", fmt.Errorf("project %q not found", projectName)
@@ -449,6 +449,7 @@ func (d *Daemon) TriggerRun(ctx context.Context, projectName, workflowName strin
 			Env:            wfRef.Env,
 			TimeoutMinutes: wfRef.TimeoutMinutes,
 		}},
+		Inputs: inputs,
 	}
 
 	select {

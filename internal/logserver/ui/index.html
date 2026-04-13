@@ -957,6 +957,18 @@ select.form-input {
   </div>
 </div>
 
+<!-- Trigger inputs modal -->
+<div class="modal-overlay hidden" id="triggerInputsModal" onclick="if(event.target===this)closeTriggerInputsModal()">
+  <div class="modal-card" style="max-width:480px">
+    <div class="modal-title" id="triggerInputsTitle">Trigger workflow</div>
+    <div id="triggerInputsFields" style="display:flex;flex-direction:column;gap:12px;margin-top:4px"></div>
+    <div class="modal-footer" style="margin-top:16px">
+      <button class="btn" onclick="closeTriggerInputsModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="submitTriggerInputsModal()">&#9654; Run</button>
+    </div>
+  </div>
+</div>
+
 <!-- Create project wizard modal -->
 <div class="modal-overlay hidden" id="createWizardModal" onclick="if(event.target===this)closeCreateWizard()">
   <div class="modal-card">
@@ -2054,20 +2066,77 @@ async function deleteWorkflow(projectName, wfName) {
 }
 
 async function triggerWorkflow(projectName, wfName) {
+  // Fetch declared inputs for the workflow.
+  let inputs = {};
+  try {
+    const res = await fetch(
+      '/api/projects/' + encodeURIComponent(projectName) + '/workflows/' + encodeURIComponent(wfName) + '/inputs'
+    );
+    if (res.ok) inputs = await res.json();
+  } catch (_) {}
+
+  const keys = Object.keys(inputs || {});
+  if (keys.length > 0) {
+    // Show inputs modal.
+    openTriggerInputsModal(projectName, wfName, inputs);
+  } else {
+    await _doTriggerWorkflow(projectName, wfName, {});
+  }
+}
+
+async function _doTriggerWorkflow(projectName, wfName, inputValues) {
   try {
     const res = await fetch(
       '/api/projects/' + encodeURIComponent(projectName) + '/workflows/' + encodeURIComponent(wfName) + '/trigger',
-      { method: 'POST' }
+      { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({inputs: inputValues}) }
     );
     if (!res.ok) { const d = await res.json().catch(()=>({})); toast(d.error || 'Trigger failed.', 'error'); return; }
     toast('Run triggered: ' + wfName, 'success');
     setTimeout(() => {
-      // Refresh runs section
       fetch('/runs').then(r => r.json()).then(runs => refreshProjectRuns(projectName, runs)).catch(()=>{});
     }, 800);
   } catch (e) {
     toast('Network error: ' + e.message, 'error');
   }
+}
+
+let _triggerModalCtx = null;
+
+function openTriggerInputsModal(projectName, wfName, inputs) {
+  _triggerModalCtx = { projectName, wfName };
+  const modal = document.getElementById('triggerInputsModal');
+  document.getElementById('triggerInputsTitle').textContent = 'Trigger ' + wfName;
+
+  const fieldsEl = document.getElementById('triggerInputsFields');
+  fieldsEl.innerHTML = Object.entries(inputs).map(([name, decl]) => `
+    <div class="form-group">
+      <label class="form-label">${esc(name)}${decl.required ? ' <span style="color:var(--status-failure)">*</span>' : ''}</label>
+      <input class="form-input" type="text" id="ti_${esc(name)}"
+        placeholder="${esc(decl.description || '')}"
+        value="${esc(decl.default || '')}">
+      ${decl.description ? `<div style="font-size:11px;color:var(--text-muted);margin-top:3px">${esc(decl.description)}</div>` : ''}
+    </div>
+  `).join('');
+
+  modal.classList.remove('hidden');
+}
+
+function closeTriggerInputsModal() {
+  document.getElementById('triggerInputsModal').classList.add('hidden');
+  _triggerModalCtx = null;
+}
+
+async function submitTriggerInputsModal() {
+  if (!_triggerModalCtx) return;
+  const { projectName, wfName } = _triggerModalCtx;
+  const fields = document.getElementById('triggerInputsFields').querySelectorAll('input[id^="ti_"]');
+  const inputValues = {};
+  fields.forEach(el => {
+    const name = el.id.replace(/^ti_/, '');
+    inputValues[name] = el.value;
+  });
+  closeTriggerInputsModal();
+  await _doTriggerWorkflow(projectName, wfName, inputValues);
 }
 
 // panelId → CodeMirror instance

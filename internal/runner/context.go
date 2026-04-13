@@ -153,9 +153,12 @@ func BuildEvalContext(
 		"status": jobStatusString(jobStatus),
 	}
 
-	inputs := make(map[string]string)
 	if secrets == nil {
 		secrets = make(map[string]string)
+	}
+	inputs := info.Inputs
+	if inputs == nil {
+		inputs = make(map[string]string)
 	}
 
 	return &EvalContext{
