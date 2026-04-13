@@ -22,7 +22,8 @@ type Config struct {
 }
 
 type RunnerConfig struct {
-	DefaultImage string `yaml:"default_image"` // default: "ubuntu:22.04"
+	DefaultImage string `yaml:"default_image"`  // default: "ubuntu:22.04"
+	WorkspaceDir string `yaml:"workspace_dir"`  // host path used as root for all temp mounts; default: ~/.cache/ghenkins/workspace
 }
 
 type GitHubConfig struct {
@@ -166,6 +167,14 @@ func applyDefaults(cfg *Config) {
 	}
 	if cfg.Runner.DefaultImage == "" {
 		cfg.Runner.DefaultImage = "ubuntu:22.04"
+	}
+	if cfg.Runner.WorkspaceDir == "" {
+		if v := os.Getenv("GHENKINS_WORKSPACE_DIR"); v != "" {
+			cfg.Runner.WorkspaceDir = v
+		} else {
+			home, _ := os.UserHomeDir()
+			cfg.Runner.WorkspaceDir = filepath.Join(home, ".cache", "ghenkins", "workspace")
+		}
 	}
 }
 

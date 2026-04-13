@@ -44,8 +44,8 @@ func (r *ActRunner) Run(ctx context.Context, j poller.Job, wf config.WorkflowRef
 		return 0, fmt.Errorf("ensureBareClone: %w", err)
 	}
 
-	// 2. Create a worktree at the target SHA
-	wtDir, cleanup, err := addWorktree(ctx, bareDir, j.SHA)
+	// 2. Create a worktree at the target SHA (ActRunner uses OS temp dir — not containerized)
+	wtDir, cleanup, err := addWorktree(ctx, bareDir, j.SHA, "")
 	if err != nil {
 		return 0, fmt.Errorf("addWorktree: %w", err)
 	}
@@ -111,6 +111,7 @@ type JobCallback func(jobName string, status JobStatus, startedAt, finishedAt ti
 // PodmanRunner runs workflows natively in Podman containers.
 type PodmanRunner struct {
 	cacheDir     string // ~/.cache/ghenkins/repos
+	workspaceDir string // host path for all ephemeral bind mounts (worktrees, runner dirs)
 	podmanSock   string // empty = auto-detect
 	defaultImage string // fallback image when runs-on is not a valid image
 	log          zerolog.Logger
@@ -119,11 +120,14 @@ type PodmanRunner struct {
 	Store        store.Store // store for upserting artifacts; set by daemon
 }
 
-// NewPodman creates a PodmanRunner. defaultImage is used when the workflow does not specify
-// an image via runner_image and the runs-on label is not a container image.
-func NewPodman(cacheDir, defaultImage string, log zerolog.Logger) *PodmanRunner {
+// NewPodman creates a PodmanRunner. workspaceDir is the host-side root for all
+// ephemeral directories so that child containers spawned via the Podman socket
+// can bind-mount them by their host path. defaultImage is used when the workflow
+// does not specify an image.
+func NewPodman(cacheDir, workspaceDir, defaultImage string, log zerolog.Logger) *PodmanRunner {
 	return &PodmanRunner{
 		cacheDir:     cacheDir,
+		workspaceDir: workspaceDir,
 		defaultImage: defaultImage,
 		log:          log,
 	}
@@ -143,7 +147,7 @@ func (r *PodmanRunner) Run(ctx context.Context, j poller.Job, wf config.Workflow
 	sha := j.SHA
 	if j.Repo == "" {
 		// No upstream repo — create a temp workspace and use "manual" as the SHA.
-		tmp, mkErr := os.MkdirTemp("", "ghenkins-wt-*")
+		tmp, mkErr := os.MkdirTemp(r.workspaceDir, "ghenkins-wt-*")
 		if mkErr != nil {
 			return 0, fmt.Errorf("create temp workspace: %w", mkErr)
 		}
@@ -179,7 +183,7 @@ func (r *PodmanRunner) Run(ctx context.Context, j poller.Job, wf config.Workflow
 		}
 		fmt.Fprintf(logWriter, "## Checking out %s...\n", shortSHA)
 		var cleanup func()
-		wtDir, cleanup, err = addWorktree(ctx, bareDir, sha)
+		wtDir, cleanup, err = addWorktree(ctx, bareDir, sha, r.workspaceDir)
 		if err != nil {
 			fmt.Fprintf(logWriter, "## ERROR: worktree checkout failed: %v\n", err)
 			return 0, fmt.Errorf("addWorktree: %w", err)
@@ -266,7 +270,7 @@ func (r *PodmanRunner) Run(ctx context.Context, j poller.Job, wf config.Workflow
 	}
 
 	// 9. Create job runner
-	jobRunner := &podmanJobRunner{conn: conn, WorkspaceDir: wtDir, cacheDir: r.cacheDir, store: r.Store}
+	jobRunner := &podmanJobRunner{conn: conn, WorkspaceDir: wtDir, cacheDir: r.cacheDir, workspaceDir: r.workspaceDir, store: r.Store}
 
 	// 10. Execute jobs level by level (sequential within each level for MVP)
 	exitCode := 0

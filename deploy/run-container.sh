@@ -16,8 +16,10 @@ CONTAINER_NAME="${GHENKINS_CONTAINER:-ghenkins}"
 HOST_CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}/ghenkins"
 HOST_DATA="${XDG_DATA_HOME:-$HOME/.local/share}/ghenkins"
 HOST_CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/ghenkins"
+HOST_WORKSPACE="${GHENKINS_WORKSPACE_DIR:-$HOST_CACHE/workspace}"
 HOST_RUNTIME="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
 PODMAN_SOCK="$HOST_RUNTIME/podman/podman.sock"
+mkdir -p "$HOST_WORKSPACE"
 
 if [[ ! -S "$PODMAN_SOCK" ]]; then
     echo "ERROR: Podman socket not found at $PODMAN_SOCK" >&2
@@ -35,10 +37,11 @@ exec podman run \
     -e XDG_RUNTIME_DIR=/run \
     -e HOME="$HOME" \
     -e GHENKINS_LOG_LEVEL="${GHENKINS_LOG_LEVEL:-info}" \
-    -v /tmp:/tmp \
+    -e GHENKINS_WORKSPACE_DIR="$HOST_WORKSPACE" \
     -v "$HOST_CONFIG:$HOST_CONFIG" \
     -v "$HOST_DATA:$HOST_DATA" \
     -v "$HOST_CACHE:$HOST_CACHE" \
+    -v "$HOST_WORKSPACE:$HOST_WORKSPACE" \
     -v "$HOME/.ssh:$HOME/.ssh:ro" \
     -v "$PODMAN_SOCK:/run/podman/podman.sock" \
     "$IMAGE" serve

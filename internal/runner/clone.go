@@ -38,8 +38,8 @@ func ensureBareClone(ctx context.Context, cacheDir, owner, repo string) (string,
 // addWorktree creates `git worktree add <tmpdir> <sha>` in the bare clone.
 // Returns (worktreePath, cleanupFunc, error).
 // cleanup removes the worktree dir and runs `git worktree remove`.
-func addWorktree(ctx context.Context, bareDir, sha string) (string, func(), error) {
-	wtDir, err := os.MkdirTemp("", "ghenkins-wt-*")
+func addWorktree(ctx context.Context, bareDir, sha, workspaceDir string) (string, func(), error) {
+	wtDir, err := os.MkdirTemp(workspaceDir, "ghenkins-wt-*")
 	if err != nil {
 		return "", nil, fmt.Errorf("mkdtemp: %w", err)
 	}

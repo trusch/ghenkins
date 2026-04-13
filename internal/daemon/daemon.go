@@ -73,7 +73,10 @@ func New(cfg *config.Config, log zerolog.Logger) (*Daemon, error) {
 	// 4. Create runner.
 	home, _ := os.UserHomeDir()
 	cacheDir := filepath.Join(home, ".cache", "ghenkins", "repos")
-	r := runner.NewPodman(cacheDir, cfg.Runner.DefaultImage, log)
+	if err := os.MkdirAll(cfg.Runner.WorkspaceDir, 0o755); err != nil {
+		return nil, fmt.Errorf("create workspace dir: %w", err)
+	}
+	r := runner.NewPodman(cacheDir, cfg.Runner.WorkspaceDir, cfg.Runner.DefaultImage, log)
 
 	// 5. Create reporter.
 	rep := reporter.New(ghClient, log)

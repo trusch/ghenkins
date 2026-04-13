@@ -58,7 +58,8 @@ type ExecutionContext struct {
 // podmanJobRunner runs individual jobs in Podman containers.
 type podmanJobRunner struct {
 	conn         context.Context // Podman bindings connection context
-	WorkspaceDir string          // host path mounted at /workspace in containers
+	WorkspaceDir string          // host path of checked-out source, mounted at /workspace
+	workspaceDir string          // host-side root for all ephemeral bind mounts (runner dirs, worktrees)
 	cacheDir     string          // host path for caching action repos (~/.cache/ghenkins)
 	store        store.Store     // nil if not wired; used to persist artifacts
 }
@@ -133,8 +134,9 @@ func (r *podmanJobRunner) RunJob(ctx context.Context, jobID string, job *Job, wf
 		image = "ubuntu:22.04"
 	}
 
-	// 4. Create OS temp dir for runner files
-	runnerDir, err := os.MkdirTemp("", "ghenkins-runner-*")
+	// 4. Create runner dir under workspaceDir so host-path bind mounts work
+	// when ghenkins itself runs in a container (child containers are siblings on the host).
+	runnerDir, err := os.MkdirTemp(r.workspaceDir, "ghenkins-runner-*")
 	if err != nil {
 		return JobResult{JobID: jobID, Status: JobStatusFailure, Steps: execCtx.StepResults},
 			fmt.Errorf("create runner dir: %w", err)
