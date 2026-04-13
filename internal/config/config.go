@@ -14,10 +14,11 @@ import (
 type Config struct {
 	GitHub         GitHubConfig    `yaml:"github"`
 	LogServer      LogServerConfig `yaml:"log_server"`
-	Watches        []Watch         `yaml:"watches"`
 	Store          StoreConfig     `yaml:"store"`
 	Runner         RunnerConfig    `yaml:"runner"`
 	MaxConcurrency int             `yaml:"max_concurrency"` // default: 2
+	Projects       []Project       `yaml:"projects"`        // new
+	Watches        []Watch         `yaml:"watches"`         // deprecated, still parsed for compat
 }
 
 type RunnerConfig struct {
@@ -38,6 +39,67 @@ type LogServerConfig struct {
 type StoreConfig struct {
 	Path string `yaml:"path"` // default: ~/.local/share/ghenkins/ghenkins.db
 }
+
+// Trigger defines an event source for a project.
+type Trigger struct {
+	Type   string   `yaml:"type"`             // "push", "pull_request", "manual"
+	Repo   string   `yaml:"repo,omitempty"`   // "owner/repo", required for push/pr
+	Branch string   `yaml:"branch,omitempty"` // branch pattern
+	PR     int      `yaml:"pr,omitempty"`     // specific PR number (pull_request type)
+	On     []string `yaml:"on,omitempty"`     // ["push"], ["pull_request"]
+}
+
+// Project is a named collection of workflows with optional triggers.
+type Project struct {
+	Name        string        `yaml:"name"`
+	Description string        `yaml:"description,omitempty"`
+	Workflows   []WorkflowRef `yaml:"workflows"`
+	Triggers    []Trigger     `yaml:"triggers,omitempty"`
+}
+
+// EffectiveProjects returns Projects plus any legacy Watches converted to Projects.
+func (c *Config) EffectiveProjects() []Project {
+	result := make([]Project, 0, len(c.Projects)+len(c.Watches))
+	result = append(result, c.Projects...)
+	for _, w := range c.Watches {
+		p := Project{
+			Name:      w.Name,
+			Workflows: w.Workflows,
+		}
+		if w.Repo != "" {
+			trigType := "push"
+			if w.PR > 0 {
+				trigType = "pull_request"
+			}
+			on := w.On
+			if len(on) == 0 {
+				on = []string{"push"}
+			}
+			p.Triggers = append(p.Triggers, Trigger{
+				Type:   trigType,
+				Repo:   w.Repo,
+				Branch: w.Branch,
+				PR:     w.PR,
+				On:     on,
+			})
+		}
+		result = append(result, p)
+	}
+	return result
+}
+
+// HelloWorldWorkflow is default workflow content for new projects.
+const HelloWorldWorkflow = `name: hello-world
+
+on: [push]
+
+jobs:
+  hello:
+    runs-on: ubuntu:22.04
+    steps:
+      - name: Hello
+        run: echo "Hello from ghenkins! Project is working."
+`
 
 type Watch struct {
 	Name      string        `yaml:"name"`
