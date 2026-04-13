@@ -29,6 +29,12 @@ type JobBindMount struct {
 	ReadOnly  bool   `yaml:"read-only"`
 }
 
+type JobVolumeMount struct {
+	Name      string `yaml:"name"`
+	Container string `yaml:"container"`
+	Copy      bool   `yaml:"copy"`
+}
+
 type Job struct {
 	Name           string            `yaml:"name"`
 	RunsOn         interface{}       `yaml:"runs-on"`
@@ -39,6 +45,7 @@ type Job struct {
 	TimeoutMinutes int               `yaml:"timeout-minutes"`
 	Steps          []*Step           `yaml:"steps"`
 	ExtraBinds     []JobBindMount    `yaml:"extra-binds"`
+	Volumes        []JobVolumeMount  `yaml:"volumes"`
 }
 
 type Step struct {

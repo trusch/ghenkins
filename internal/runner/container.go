@@ -23,6 +23,13 @@ type BindMount struct {
 	ReadOnly      bool
 }
 
+// NamedVolumeMount describes a Podman named volume mount.
+type NamedVolumeMount struct {
+	Name          string
+	ContainerPath string
+	Copy          bool // populate volume from image on first use
+}
+
 // ContainerConfig holds configuration for creating a job container.
 type ContainerConfig struct {
 	Image         string
@@ -31,6 +38,7 @@ type ContainerConfig struct {
 	WorkspaceHost string            // host path → mounted at /workspace
 	RunnerDirHost string            // host path → mounted at /runner
 	ExtraBinds    []BindMount       // additional mounts (e.g. composite action source)
+	NamedVolumes  []NamedVolumeMount // Podman named volume mounts
 	NetworkMode   string            // "bridge" (default) or "host"
 }
 
@@ -103,6 +111,18 @@ func CreateContainer(conn context.Context, cfg ContainerConfig) (*Container, err
 		})
 	}
 	s.Mounts = mounts
+
+	for _, v := range cfg.NamedVolumes {
+		opts := []string{}
+		if v.Copy {
+			opts = append(opts, "copy")
+		}
+		s.Volumes = append(s.Volumes, &specgen.NamedVolume{
+			Name:    v.Name,
+			Dest:    v.ContainerPath,
+			Options: opts,
+		})
+	}
 
 	nsMode := specgen.Bridge
 	if cfg.NetworkMode == "host" {

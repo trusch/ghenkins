@@ -227,6 +227,16 @@ func (r *podmanJobRunner) RunJob(ctx context.Context, jobID string, job *Job, wf
 		BindMount{HostPath: artifactDir, ContainerPath: "/artifacts"},
 	)
 
+	// Build named volumes from job.Volumes
+	var namedVolumes []NamedVolumeMount
+	for _, v := range job.Volumes {
+		namedVolumes = append(namedVolumes, NamedVolumeMount{
+			Name:          v.Name,
+			ContainerPath: v.Container,
+			Copy:          v.Copy,
+		})
+	}
+
 	// 10. Create + start container
 	containerName := fmt.Sprintf("ghenkins-%s-%d", sanitizeName(jobID), time.Now().UnixNano())
 	fmt.Fprintf(logWriter, "## Creating container %s (image: %s)\n", containerName, image)
@@ -237,6 +247,7 @@ func (r *podmanJobRunner) RunJob(ctx context.Context, jobID string, job *Job, wf
 		WorkspaceHost: r.WorkspaceDir,
 		RunnerDirHost: runnerDir,
 		ExtraBinds:    extraBinds,
+		NamedVolumes:  namedVolumes,
 	})
 	if err != nil {
 		return JobResult{JobID: jobID, Status: JobStatusFailure, Steps: execCtx.StepResults},
