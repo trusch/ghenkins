@@ -148,45 +148,47 @@ func (d *Daemon) recoverStaleRuns(ctx context.Context) {
 }
 
 func (d *Daemon) seedWatchesFromConfig(ctx context.Context) error {
-	watches, err := d.store.ListWatches(ctx)
+	projects, err := d.store.ListProjects(ctx)
 	if err != nil {
 		return err
 	}
-	if len(watches) > 0 {
+	if len(projects) > 0 {
 		return nil
 	}
-	for _, w := range d.cfg.Watches {
-		dbw := configWatchToDBWatch(w)
-		if err := d.store.CreateWatch(ctx, dbw); err != nil {
+	for _, p := range d.cfg.EffectiveProjects() {
+		dbp := &store.DBProject{
+			Name: p.Name,
+		}
+		for _, wf := range p.Workflows {
+			dbp.Workflows = append(dbp.Workflows, &store.DBWorkflow{
+				ProjectName:    p.Name,
+				Name:           wf.Name,
+				Path:           wf.Path,
+				RunnerImage:    wf.RunnerImage,
+				Secrets:        wf.Secrets,
+				Env:            wf.Env,
+				TimeoutMinutes: wf.TimeoutMinutes,
+			})
+		}
+		for _, t := range p.Triggers {
+			on := t.On
+			if len(on) == 0 {
+				on = []string{t.Type}
+			}
+			dbp.Triggers = append(dbp.Triggers, &store.DBTrigger{
+				ProjectName: p.Name,
+				Type:        t.Type,
+				Repo:        t.Repo,
+				Branch:      t.Branch,
+				PR:          t.PR,
+				OnEvents:    on,
+			})
+		}
+		if err := d.store.CreateProject(ctx, dbp); err != nil {
 			return err
 		}
 	}
 	return nil
-}
-
-func configWatchToDBWatch(w config.Watch) *store.DBWatch {
-	dbw := &store.DBWatch{
-		Name:     w.Name,
-		Repo:     w.Repo,
-		Branch:   w.Branch,
-		PR:       w.PR,
-		OnEvents: w.On,
-	}
-	if len(dbw.OnEvents) == 0 {
-		dbw.OnEvents = []string{"push"}
-	}
-	for _, wf := range w.Workflows {
-		dbw.Workflows = append(dbw.Workflows, &store.DBWorkflow{
-			ProjectName:    w.Name,
-			Name:           wf.Name,
-			Path:           wf.Path,
-			RunnerImage:    wf.RunnerImage,
-			Secrets:        wf.Secrets,
-			Env:            wf.Env,
-			TimeoutMinutes: wf.TimeoutMinutes,
-		})
-	}
-	return dbw
 }
 
 func (d *Daemon) Run(ctx context.Context) error {
@@ -203,21 +205,15 @@ func (d *Daemon) Run(ctx context.Context) error {
 
 	// Configure poller to load watches from DB each cycle.
 	d.poller.SetWatchProvider(func(ctx context.Context) ([]config.Watch, error) {
-		dbWatches, err := d.store.ListWatches(ctx)
+		projects, err := d.store.ListProjects(ctx)
 		if err != nil {
 			return nil, err
 		}
 		var watches []config.Watch
-		for _, dw := range dbWatches {
-			w := config.Watch{
-				Name:   dw.Name,
-				Repo:   dw.Repo,
-				Branch: dw.Branch,
-				PR:     dw.PR,
-				On:     dw.OnEvents,
-			}
-			for _, wf := range dw.Workflows {
-				w.Workflows = append(w.Workflows, config.WorkflowRef{
+		for _, p := range projects {
+			wfs := make([]config.WorkflowRef, 0, len(p.Workflows))
+			for _, wf := range p.Workflows {
+				wfs = append(wfs, config.WorkflowRef{
 					Name:           wf.Name,
 					Path:           wf.Path,
 					RunnerImage:    wf.RunnerImage,
@@ -226,7 +222,23 @@ func (d *Daemon) Run(ctx context.Context) error {
 					TimeoutMinutes: wf.TimeoutMinutes,
 				})
 			}
-			watches = append(watches, w)
+			for _, t := range p.Triggers {
+				if t.Type != "push" && t.Type != "pull_request" {
+					continue
+				}
+				on := t.OnEvents
+				if len(on) == 0 {
+					on = []string{t.Type}
+				}
+				watches = append(watches, config.Watch{
+					Name:      p.Name,
+					Repo:      t.Repo,
+					Branch:    t.Branch,
+					PR:        t.PR,
+					On:        on,
+					Workflows: wfs,
+				})
+			}
 		}
 		return watches, nil
 	})
@@ -390,32 +402,44 @@ func (d *Daemon) runJob(ctx context.Context, j poller.Job, wf config.WorkflowRef
 
 // TriggerRun implements RunControl. It enqueues a manual job for the given project/workflow.
 func (d *Daemon) TriggerRun(ctx context.Context, projectName, workflowName string) (string, error) {
-	watch, err := d.store.GetWatch(ctx, projectName)
-	if err != nil || watch == nil {
+	project, err := d.store.GetProject(ctx, projectName)
+	if err != nil {
 		return "", fmt.Errorf("project %q not found", projectName)
 	}
 
 	var wfRef *store.DBWorkflow
-	for _, wf := range watch.Workflows {
+	for _, wf := range project.Workflows {
 		if wf.Name == workflowName {
 			wfRef = wf
 			break
 		}
 	}
 	if wfRef == nil {
-		return "", fmt.Errorf("workflow %q not found", workflowName)
+		return "", fmt.Errorf("workflow %q not found in project %q", workflowName, projectName)
 	}
 
-	parts := strings.SplitN(watch.Repo, "/", 2)
-	owner, repoName := parts[0], parts[1]
+	// Determine repo and branch from the first push/pr trigger, if any.
+	var repo, branch string
+	for _, t := range project.Triggers {
+		if t.Type == "push" || t.Type == "pull_request" {
+			repo = t.Repo
+			branch = t.Branch
+			break
+		}
+	}
+
+	var owner, repoName string
+	if repo != "" {
+		owner, repoName = splitRepo(repo)
+	}
 
 	job := poller.Job{
 		WatchName: projectName,
-		Repo:      watch.Repo,
+		Repo:      repo,
 		Owner:     owner,
 		RepoName:  repoName,
 		SHA:       "manual",
-		Branch:    watch.Branch,
+		Branch:    branch,
 		EventType: "manual",
 		WorkflowRefs: []config.WorkflowRef{{
 			Name:           wfRef.Name,
