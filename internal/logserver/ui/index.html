@@ -737,6 +737,97 @@ select.form-input {
 
 @keyframes pulse   { 0%,100%{opacity:1} 50%{opacity:0.3} }
 @keyframes fadein  { from{opacity:0;transform:translateY(-4px)} to{opacity:1;transform:none} }
+
+/* ── Modal overlay ── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.modal-overlay.hidden { display: none; }
+.modal-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 28px 32px;
+  width: 480px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 64px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.modal-title { font-size: 16px; font-weight: 700; }
+.modal-subtitle { font-size: 12px; color: var(--text-secondary); margin-top: -12px; }
+.modal-step { display: none; flex-direction: column; gap: 16px; }
+.modal-step.active { display: flex; }
+.modal-footer { display: flex; gap: 8px; justify-content: flex-end; }
+
+/* ── Trigger option cards ── */
+.trigger-option {
+  background: var(--bg-elevated);
+  border: 2px solid var(--border);
+  border-radius: 6px;
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: border-color 100ms;
+}
+.trigger-option:hover { border-color: var(--text-secondary); }
+.trigger-option.selected { border-color: var(--accent); background: var(--bg-selected); }
+.trigger-option-title { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
+.trigger-option-desc { font-size: 11px; color: var(--text-secondary); }
+.trigger-option-fields { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+.trigger-option-fields.hidden { display: none; }
+
+/* ── Trigger type badges ── */
+.trigger-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.trigger-badge.push   { background: rgba(59,130,246,0.15); color: #60a5fa; }
+.trigger-badge.pr     { background: rgba(139,92,246,0.15); color: #a78bfa; }
+.trigger-badge.manual { background: var(--bg-elevated); color: var(--text-muted); border: 1px solid var(--border); }
+
+/* ── Project grid ── */
+.project-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+
+/* ── Trigger item row ── */
+.trigger-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  margin-bottom: 8px;
+}
+.trigger-row-info { flex: 1; min-width: 0; }
+
+/* ── Callout ── */
+.callout {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--text-muted);
+  border-radius: 4px;
+  padding: 10px 14px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin: 12px 0;
+}
+.callout.info { border-left-color: var(--accent); }
+
 .artifact-panel {
   flex-shrink: 0;
   padding: 10px 20px;
@@ -849,7 +940,7 @@ select.form-input {
         <div class="nav-label">Projects</div>
         <div id="projectsNav"><!-- populated dynamically --></div>
         <div style="padding:6px 10px;">
-          <button class="btn btn-sm" style="width:100%" onclick="navigate('#projects')">&#65291; New project</button>
+          <button class="btn btn-sm" style="width:100%" onclick="openCreateWizard()">&#65291; New project</button>
         </div>
       </div>
       <div class="sidebar-bottom">
@@ -863,6 +954,83 @@ select.form-input {
     <main class="content-area" id="contentArea">
       <!-- views rendered here -->
     </main>
+  </div>
+</div>
+
+<!-- Create project wizard modal -->
+<div class="modal-overlay hidden" id="createWizardModal" onclick="if(event.target===this)closeCreateWizard()">
+  <div class="modal-card">
+    <div>
+      <div class="modal-title">New project</div>
+      <div class="modal-subtitle" id="wizardStepLabel">Step 1 of 2 &mdash; Identity</div>
+    </div>
+
+    <!-- Step 1: Identity -->
+    <div class="modal-step active" id="wizardStep1">
+      <div class="form-group">
+        <label class="form-label">Name *</label>
+        <input class="form-input" type="text" id="wz_name" placeholder="my-project" oninput="validateWizardName()">
+        <div class="error-msg" id="wz_nameError"></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Description <span style="color:var(--text-muted)">(optional)</span></label>
+        <input class="form-input" type="text" id="wz_desc" placeholder="What this project builds">
+      </div>
+      <div class="modal-footer">
+        <button class="btn" onclick="closeCreateWizard()">Cancel</button>
+        <button class="btn btn-primary" onclick="wizardNext()">Next &rarr;</button>
+      </div>
+    </div>
+
+    <!-- Step 2: Triggers -->
+    <div class="modal-step" id="wizardStep2">
+      <div>
+        <div style="font-size:13px;font-weight:600;margin-bottom:4px">Add a trigger <span style="color:var(--text-muted);font-weight:400">(optional)</span></div>
+        <div style="font-size:11px;color:var(--text-secondary)">Projects work without triggers &mdash; you can always trigger manually.</div>
+      </div>
+
+      <div class="trigger-option selected" id="wz_opt_none" onclick="wizardSelectTrigger('none')">
+        <div class="trigger-option-title">No trigger &mdash; manual only</div>
+        <div class="trigger-option-desc">Run workflows by clicking Trigger on any workflow</div>
+      </div>
+
+      <div class="trigger-option" id="wz_opt_push" onclick="wizardSelectTrigger('push')">
+        <div class="trigger-option-title">&#9654; GitHub push</div>
+        <div class="trigger-option-desc">Trigger on git push to a branch</div>
+        <div class="trigger-option-fields hidden" id="wz_push_fields">
+          <div class="form-group">
+            <label class="form-label">Repo (owner/repo) *</label>
+            <input class="form-input" type="text" id="wz_push_repo" placeholder="owner/repo" onclick="event.stopPropagation()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Branch <span style="color:var(--text-muted)">(optional)</span></label>
+            <input class="form-input" type="text" id="wz_push_branch" placeholder="main" onclick="event.stopPropagation()">
+          </div>
+        </div>
+      </div>
+
+      <div class="trigger-option" id="wz_opt_pr" onclick="wizardSelectTrigger('pr')">
+        <div class="trigger-option-title">&#8644; GitHub pull request</div>
+        <div class="trigger-option-desc">Trigger on pull request events</div>
+        <div class="trigger-option-fields hidden" id="wz_pr_fields">
+          <div class="form-group">
+            <label class="form-label">Repo (owner/repo) *</label>
+            <input class="form-input" type="text" id="wz_pr_repo" placeholder="owner/repo" onclick="event.stopPropagation()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Branch <span style="color:var(--text-muted)">(optional)</span></label>
+            <input class="form-input" type="text" id="wz_pr_branch" placeholder="main" onclick="event.stopPropagation()">
+          </div>
+        </div>
+      </div>
+
+      <div class="error-msg" id="wz_triggerError"></div>
+      <div class="modal-footer">
+        <button class="btn" onclick="wizardBack()">&larr; Back</button>
+        <button class="btn" onclick="closeCreateWizard()">Cancel</button>
+        <button class="btn btn-primary" id="wz_submitBtn" onclick="submitCreateWizard()">Create project</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -884,6 +1052,7 @@ let selectedJobBox = null;
 let _lastJobsData = null;
 let _lastWorkflowJobs = null;
 let jobGraphTimer = null;
+let _wizardTriggerType = 'none';
 
 // ── Utils ─────────────────────────────────────────────────────────────────────
 
@@ -1229,6 +1398,10 @@ async function renderDashboard() {
     const statusHtml = status
       ? `${statusDotHtml(status)} <span style="font-size:11px;color:var(--text-secondary)">${esc(status)}</span>`
       : '<span style="font-size:11px;color:var(--text-muted)">no runs</span>';
+    const triggers = p.triggers || [];
+    const triggerBadge = triggers.length === 0
+      ? '<span class="trigger-badge manual">Manual only</span>'
+      : `<span style="font-size:11px;color:var(--text-secondary)">${triggers.length} trigger${triggers.length !== 1 ? 's' : ''}</span>`;
     const wfCount = (p.workflows || []).length;
     const lastAge = lastRun ? formatAge(lastRun.started_at) : null;
     return `
@@ -1237,7 +1410,7 @@ async function renderDashboard() {
           <span class="project-name">${esc(p.name)}</span>
           <span style="display:flex;align-items:center;gap:5px">${statusHtml}</span>
         </div>
-        <div class="project-meta">${esc(shortRepo(p.repo))}${p.branch ? ' &middot; branch: ' + esc(p.branch) : ''}</div>
+        <div class="project-meta">${triggerBadge}</div>
         <div class="project-footer">${wfCount} workflow${wfCount !== 1 ? 's' : ''}${lastAge ? ' &middot; last run ' + esc(lastAge) : ''}</div>
       </div>
     `;
@@ -1278,66 +1451,26 @@ async function showProjectsList() {
   let projects = [];
   try { projects = await fetch('/api/projects').then(r => r.json()); } catch (_) {}
 
-  const newProjectFormHtml = `
-    <div class="inline-form hidden" id="newProjectForm">
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Name *</label>
-          <input class="form-input" type="text" id="npName" placeholder="my-project">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Repo *</label>
-          <input class="form-input" type="text" id="npRepo" placeholder="owner/repo">
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Trigger</label>
-          <div class="radio-group">
-            <label><input type="radio" name="npTrigger" value="branch" checked onchange="toggleNpTrigger()"> Branch</label>
-            <label><input type="radio" name="npTrigger" value="pr" onchange="toggleNpTrigger()"> PR number</label>
-          </div>
-        </div>
-      </div>
-      <div class="form-row" id="npBranchRow">
-        <div class="form-group">
-          <label class="form-label">Branch</label>
-          <input class="form-input" type="text" id="npBranch" placeholder="main">
-        </div>
-      </div>
-      <div class="form-row hidden" id="npPrRow">
-        <div class="form-group">
-          <label class="form-label">PR number</label>
-          <input class="form-input" type="number" id="npPr" placeholder="42">
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Events</label>
-          <div class="checkbox-group">
-            <label><input type="checkbox" id="npEventPush" checked> push</label>
-            <label><input type="checkbox" id="npEventPR"> pull_request</label>
-          </div>
-        </div>
-      </div>
-      <div class="form-actions">
-        <button class="btn" onclick="document.getElementById('newProjectForm').classList.add('hidden')">Cancel</button>
-        <button class="btn btn-primary" onclick="submitNewProject()">Create project</button>
-      </div>
-      <div class="error-msg" id="npError"></div>
-    </div>
-  `;
-
   const cards = projects.map(p => {
     const wfCount = (p.workflows || []).length;
+    const triggers = p.triggers || [];
+    const triggerBadges = triggers.length === 0
+      ? '<span class="trigger-badge manual">Manual only</span>'
+      : triggers.map(t => {
+          const ispr = t.type === 'pull_request';
+          return `<span class="trigger-badge ${ispr ? 'pr' : 'push'}">${ispr ? 'PR' : 'PUSH'}</span>`;
+        }).join(' ');
+    const descHtml = p.description
+      ? `<div class="project-meta">${esc(p.description)}</div>`
+      : '';
     return `
       <div class="project-card" onclick="navigate('#projects/${esc(p.name)}')">
         <div class="project-card-header">
           <span class="project-name">${esc(p.name)}</span>
-          <span style="font-size:11px;color:var(--text-muted)">${wfCount} workflow${wfCount !== 1 ? 's' : ''}</span>
+          <div style="display:flex;gap:4px;flex-wrap:wrap">${triggerBadges}</div>
         </div>
-        <div class="project-meta">${esc(shortRepo(p.repo))}${p.branch ? ' &middot; branch: ' + esc(p.branch) : ''}${p.pr ? ' &middot; PR #' + esc(p.pr) : ''}</div>
-        <div class="project-footer" style="color:var(--text-muted)">${(p.on_events || []).join(', ')}</div>
+        ${descHtml}
+        <div class="project-footer">${wfCount} workflow${wfCount !== 1 ? 's' : ''} &middot; ${triggers.length} trigger${triggers.length !== 1 ? 's' : ''}</div>
       </div>
     `;
   }).join('');
@@ -1346,52 +1479,13 @@ async function showProjectsList() {
     <div class="view-pad">
       <div class="section-header">
         <span class="section-title">Projects</span>
-        <button class="btn btn-primary" onclick="document.getElementById('newProjectForm').classList.remove('hidden');document.getElementById('npName').focus()">&#65291; New project</button>
+        <button class="btn btn-primary" onclick="openCreateWizard()">&#65291; New project</button>
       </div>
-      ${newProjectFormHtml}
-      ${projects.length === 0 ? '<div class="empty-notice">No projects configured.</div>' : cards}
+      ${projects.length === 0
+        ? `<div class="empty-notice">No projects yet. <button class="btn btn-primary" style="margin-left:8px" onclick="openCreateWizard()">Create your first project</button></div>`
+        : `<div class="project-grid">${cards}</div>`}
     </div>
   `;
-}
-
-function toggleNpTrigger() {
-  const val = document.querySelector('input[name="npTrigger"]:checked')?.value;
-  document.getElementById('npBranchRow')?.classList.toggle('hidden', val !== 'branch');
-  document.getElementById('npPrRow')?.classList.toggle('hidden', val !== 'pr');
-}
-
-async function submitNewProject() {
-  const name   = document.getElementById('npName').value.trim();
-  const repo   = document.getElementById('npRepo').value.trim();
-  const trigger= document.querySelector('input[name="npTrigger"]:checked')?.value;
-  const branch = document.getElementById('npBranch')?.value.trim();
-  const pr     = parseInt(document.getElementById('npPr')?.value, 10);
-  const errEl  = document.getElementById('npError');
-  errEl.textContent = '';
-  if (!name) { errEl.textContent = 'Name is required.'; return; }
-  if (!repo)  { errEl.textContent = 'Repo is required.'; return; }
-
-  const events = [];
-  if (document.getElementById('npEventPush')?.checked) events.push('push');
-  if (document.getElementById('npEventPR')?.checked)   events.push('pull_request');
-
-  const body = { name, repo, on_events: events };
-  if (trigger === 'branch' && branch) body.branch = branch;
-  if (trigger === 'pr' && !isNaN(pr)) body.pr = pr;
-
-  try {
-    const res = await fetch('/api/projects', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify(body),
-    });
-    const data = await res.json();
-    if (!res.ok) { errEl.textContent = data.error || 'Failed to create project.'; return; }
-    populateSidebar();
-    navigate('#projects/' + encodeURIComponent(name));
-  } catch (e) {
-    errEl.textContent = 'Network error: ' + e.message;
-  }
 }
 
 // ── Project detail view ───────────────────────────────────────────────────────
@@ -1422,64 +1516,11 @@ function renderProjectView(project, allRuns) {
   const ca = document.getElementById('contentArea');
   const name = project.name;
   const projectRuns = allRuns.filter(r => r.watch_name === name).slice(0, 50);
-
-  const trigger = project.branch ? 'branch: ' + project.branch
-                : project.pr     ? 'PR #' + project.pr
-                : '';
-  const events = (project.on_events || []).join(', ');
-
-  // Edit project form
-  const editFormHtml = `
-    <div class="inline-form hidden" id="editProjectForm">
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Repo *</label>
-          <input class="form-input" type="text" id="epRepo" value="${esc(project.repo)}">
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Trigger</label>
-          <div class="radio-group">
-            <label><input type="radio" name="epTrigger" value="branch" ${project.branch ? 'checked' : ''} onchange="toggleEpTrigger()"> Branch</label>
-            <label><input type="radio" name="epTrigger" value="pr"     ${project.pr     ? 'checked' : ''} onchange="toggleEpTrigger()"> PR number</label>
-          </div>
-        </div>
-      </div>
-      <div class="form-row" id="epBranchRow" ${project.pr ? 'style="display:none"' : ''}>
-        <div class="form-group">
-          <label class="form-label">Branch</label>
-          <input class="form-input" type="text" id="epBranch" value="${esc(project.branch || '')}">
-        </div>
-      </div>
-      <div class="form-row" id="epPrRow" ${!project.pr ? 'style="display:none"' : ''}>
-        <div class="form-group">
-          <label class="form-label">PR number</label>
-          <input class="form-input" type="number" id="epPr" value="${esc(project.pr || '')}">
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Events</label>
-          <div class="checkbox-group">
-            <label><input type="checkbox" id="epEventPush" ${(project.on_events||[]).includes('push') ? 'checked' : ''}> push</label>
-            <label><input type="checkbox" id="epEventPR"   ${(project.on_events||[]).includes('pull_request') ? 'checked' : ''}> pull_request</label>
-          </div>
-        </div>
-      </div>
-      <div class="form-actions">
-        <button class="btn" onclick="document.getElementById('editProjectForm').classList.add('hidden')">Cancel</button>
-        <button class="btn btn-primary" onclick="submitEditProject('${esc(name)}')">Save</button>
-      </div>
-      <div class="error-msg" id="epError"></div>
-    </div>
-  `;
-
-  // Workflows
   const workflows = project.workflows || [];
+  const triggers  = project.triggers  || [];
+
   const workflowsHtml = workflows.map(wf => renderWorkflowCard(name, wf)).join('');
 
-  // Add workflow form
   const addWfFormHtml = `
     <div class="inline-form hidden" id="addWfForm">
       ${workflowFormFields('awf', null)}
@@ -1491,8 +1532,39 @@ function renderProjectView(project, allRuns) {
     </div>
   `;
 
-  // Runs
+  const triggersListHtml = renderTriggersList(name, triggers);
+
+  const addTriggerFormHtml = `
+    <div class="inline-form hidden" id="addTriggerForm">
+      <div class="form-row">
+        <div class="form-group" style="max-width:180px">
+          <label class="form-label">Type</label>
+          <select class="form-input" id="at_type">
+            <option value="push">GitHub push</option>
+            <option value="pull_request">GitHub pull request</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Repo (owner/repo) *</label>
+          <input class="form-input" type="text" id="at_repo" placeholder="owner/repo">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Branch <span style="color:var(--text-muted)">(optional)</span></label>
+          <input class="form-input" type="text" id="at_branch" placeholder="main">
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn" onclick="document.getElementById('addTriggerForm').classList.add('hidden')">Cancel</button>
+        <button class="btn btn-primary" onclick="submitAddTrigger('${esc(name)}')">Add trigger</button>
+      </div>
+      <div class="error-msg" id="at_error"></div>
+    </div>
+  `;
+
   const runsHtml = renderRunRows(projectRuns, name);
+  const descHtml = project.description
+    ? `<div style="font-size:12px;color:var(--text-secondary);margin-top:2px">${esc(project.description)}</div>`
+    : '';
 
   ca.innerHTML = `
     <div class="view-pad">
@@ -1502,30 +1574,47 @@ function renderProjectView(project, allRuns) {
         <span>${esc(name)}</span>
       </div>
 
-      <div class="section-header" style="margin-bottom:8px">
+      <div class="section-header" style="margin-bottom:20px">
         <div>
-          <div style="font-size:20px;font-weight:700;margin-bottom:4px">${esc(name)}</div>
-          <div style="font-size:12px;color:var(--text-secondary)">
-            ${esc(shortRepo(project.repo))}${trigger ? ' &middot; ' + esc(trigger) : ''}${events ? ' &middot; events: ' + esc(events) : ''}
-          </div>
+          <div style="font-size:20px;font-weight:700">${esc(name)}</div>
+          ${descHtml}
         </div>
-        <div style="display:flex;gap:8px">
-          <button class="btn btn-sm" onclick="toggleEditProject()">Edit</button>
-          <button class="btn btn-sm btn-danger" onclick="deleteProject('${esc(name)}')">Delete</button>
-        </div>
+        <button class="btn btn-sm btn-danger" onclick="deleteProject('${esc(name)}')">Delete project</button>
       </div>
 
-      ${editFormHtml}
+      <div class="tab-bar" id="projectTabBar">
+        <button class="tab-btn active" data-ptab="workflows" onclick="switchProjectTab('workflows')">
+          Workflows <span class="count-badge" style="margin-left:4px">${workflows.length}</span>
+        </button>
+        <button class="tab-btn" data-ptab="triggers" onclick="switchProjectTab('triggers')">
+          Triggers <span class="count-badge" style="margin-left:4px">${triggers.length}</span>
+        </button>
+      </div>
 
-      <div style="margin-top:24px">
-        <div class="section-header">
-          <span class="section-title">Workflows</span>
+      <div id="ptab-workflows" class="tab-pane active">
+        <div class="section-header" style="margin-top:4px">
+          <span></span>
           <button class="btn btn-sm btn-primary" onclick="document.getElementById('addWfForm').classList.remove('hidden');document.getElementById('awfName').focus()">&#65291; Add workflow</button>
         </div>
         <div id="workflowsList">
           ${workflowsHtml || '<div class="empty-notice">No workflows. Add one to get started.</div>'}
         </div>
         ${addWfFormHtml}
+      </div>
+
+      <div id="ptab-triggers" class="tab-pane">
+        <div class="section-header" style="margin-top:4px">
+          <div>
+            <span class="section-subtitle">Event sources</span>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:2px">When these fire, all workflows run</div>
+          </div>
+          <button class="btn btn-sm btn-primary" onclick="document.getElementById('addTriggerForm').classList.remove('hidden');document.getElementById('at_repo').focus()">&#65291; Add trigger</button>
+        </div>
+        ${triggersListHtml}
+        ${addTriggerFormHtml}
+        <div class="callout info" style="margin-top:8px">
+          <strong>Manual trigger always available</strong> &mdash; use the Trigger button on any workflow to start a run immediately.
+        </div>
       </div>
 
       <div style="margin-top:28px">
@@ -1541,6 +1630,79 @@ function renderProjectView(project, allRuns) {
       </div>
     </div>
   `;
+}
+
+function switchProjectTab(tab) {
+  document.querySelectorAll('#projectTabBar .tab-btn[data-ptab]').forEach(b => {
+    b.classList.toggle('active', b.dataset.ptab === tab);
+  });
+  ['workflows','triggers'].forEach(t => {
+    const pane = document.getElementById('ptab-' + t);
+    if (pane) pane.classList.toggle('active', t === tab);
+  });
+}
+
+function renderTriggersList(projectName, triggers) {
+  if (triggers.length === 0) {
+    return `<div class="callout">This project has no event triggers. It can only be started manually. Add a GitHub trigger below to automate it.</div>`;
+  }
+  return triggers.map(t => {
+    const ispr = t.type === 'pull_request';
+    const typeLabel = ispr ? 'PR' : 'PUSH';
+    const badgeClass = ispr ? 'pr' : 'push';
+    return `
+      <div class="trigger-row">
+        <span class="trigger-badge ${esc(badgeClass)}">${esc(typeLabel)}</span>
+        <div class="trigger-row-info">
+          <div style="font-size:12px;font-weight:600;font-family:ui-monospace,monospace">${esc(t.repo || '')}</div>
+          ${t.branch ? `<div style="font-size:11px;color:var(--text-muted)">branch: ${esc(t.branch)}</div>` : ''}
+        </div>
+        <button class="btn btn-sm btn-danger" onclick="deleteTrigger('${esc(projectName)}','${esc(t.id)}')">&#10005;</button>
+      </div>
+    `;
+  }).join('');
+}
+
+async function submitAddTrigger(projectName) {
+  const type   = document.getElementById('at_type').value;
+  const repo   = document.getElementById('at_repo').value.trim();
+  const branch = document.getElementById('at_branch').value.trim();
+  const errEl  = document.getElementById('at_error');
+  errEl.textContent = '';
+  if (!repo || !/^[^/]+\/[^/]+$/.test(repo)) {
+    errEl.textContent = 'Enter a valid repo in owner/repo format.';
+    return;
+  }
+  const body = { type, repo, on_events: [type === 'pull_request' ? 'pull_request' : 'push'] };
+  if (branch) body.branch = branch;
+  try {
+    const res = await fetch('/api/projects/' + encodeURIComponent(projectName) + '/triggers', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (!res.ok) { errEl.textContent = data.error || 'Failed.'; return; }
+    toast('Trigger added.', 'success');
+    showProject(projectName);
+  } catch (e) {
+    errEl.textContent = 'Network error: ' + e.message;
+  }
+}
+
+async function deleteTrigger(projectName, triggerId) {
+  if (!confirm('Delete this trigger?')) return;
+  try {
+    const res = await fetch(
+      '/api/projects/' + encodeURIComponent(projectName) + '/triggers/' + encodeURIComponent(triggerId),
+      { method: 'DELETE' }
+    );
+    if (!res.ok) { const d = await res.json().catch(()=>({})); toast(d.error || 'Failed.', 'error'); return; }
+    toast('Trigger deleted.', 'success');
+    showProject(projectName);
+  } catch (e) {
+    toast('Network error: ' + e.message, 'error');
+  }
 }
 
 function renderWorkflowCard(projectName, wf) {
@@ -1658,50 +1820,6 @@ function readKvList(containerId) {
   return result;
 }
 
-function toggleEpTrigger() {
-  const val = document.querySelector('input[name="epTrigger"]:checked')?.value;
-  const br = document.getElementById('epBranchRow');
-  const pr = document.getElementById('epPrRow');
-  if (br) br.style.display = val === 'branch' ? '' : 'none';
-  if (pr) pr.style.display = val === 'pr'     ? '' : 'none';
-}
-
-function toggleEditProject() {
-  document.getElementById('editProjectForm')?.classList.toggle('hidden');
-}
-
-async function submitEditProject(name) {
-  const repo   = document.getElementById('epRepo').value.trim();
-  const trigger= document.querySelector('input[name="epTrigger"]:checked')?.value;
-  const branch = document.getElementById('epBranch')?.value.trim();
-  const pr     = parseInt(document.getElementById('epPr')?.value, 10);
-  const errEl  = document.getElementById('epError');
-  errEl.textContent = '';
-  if (!repo) { errEl.textContent = 'Repo is required.'; return; }
-
-  const events = [];
-  if (document.getElementById('epEventPush')?.checked) events.push('push');
-  if (document.getElementById('epEventPR')?.checked)   events.push('pull_request');
-
-  const body = { name, repo, on_events: events };
-  if (trigger === 'branch' && branch) body.branch = branch;
-  if (trigger === 'pr' && !isNaN(pr)) body.pr = pr;
-
-  try {
-    const res = await fetch('/api/projects/' + encodeURIComponent(name), {
-      method: 'PUT',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify(body),
-    });
-    const data = await res.json();
-    if (!res.ok) { errEl.textContent = data.error || 'Failed.'; return; }
-    toast('Project saved.', 'success');
-    populateSidebar();
-    showProject(name);
-  } catch (e) {
-    errEl.textContent = 'Network error: ' + e.message;
-  }
-}
 
 async function deleteProject(name) {
   if (!confirm('Delete project "' + name + '"? This cannot be undone.')) return;
@@ -1712,6 +1830,141 @@ async function deleteProject(name) {
     navigate('#projects');
   } catch (e) {
     toast('Network error: ' + e.message, 'error');
+  }
+}
+
+// ── Create project wizard ─────────────────────────────────────────────────────
+
+function openCreateWizard() {
+  _wizardTriggerType = 'none';
+  document.getElementById('wz_name').value = '';
+  document.getElementById('wz_desc').value = '';
+  document.getElementById('wz_nameError').textContent = '';
+  document.getElementById('wz_triggerError').textContent = '';
+  document.getElementById('wz_push_repo').value = '';
+  document.getElementById('wz_push_branch').value = '';
+  document.getElementById('wz_pr_repo').value = '';
+  document.getElementById('wz_pr_branch').value = '';
+  document.getElementById('wz_submitBtn').disabled = false;
+  document.getElementById('wizardStep1').classList.add('active');
+  document.getElementById('wizardStep2').classList.remove('active');
+  document.getElementById('wizardStepLabel').textContent = 'Step 1 of 2 \u2014 Identity';
+  ['none','push','pr'].forEach(t => {
+    document.getElementById('wz_opt_' + t)?.classList.toggle('selected', t === 'none');
+  });
+  document.getElementById('wz_push_fields')?.classList.add('hidden');
+  document.getElementById('wz_pr_fields')?.classList.add('hidden');
+  document.getElementById('createWizardModal').classList.remove('hidden');
+  setTimeout(() => document.getElementById('wz_name').focus(), 50);
+}
+
+function closeCreateWizard() {
+  document.getElementById('createWizardModal').classList.add('hidden');
+}
+
+function validateWizardName() {
+  const val = document.getElementById('wz_name').value.trim();
+  const errEl = document.getElementById('wz_nameError');
+  if (!val) { errEl.textContent = ''; return false; }
+  if (!/^[a-z0-9][a-z0-9_-]*$/i.test(val)) {
+    errEl.textContent = 'Use letters, numbers, hyphens, underscores only.';
+    return false;
+  }
+  errEl.textContent = '';
+  return true;
+}
+
+function wizardNext() {
+  const name = document.getElementById('wz_name').value.trim();
+  const errEl = document.getElementById('wz_nameError');
+  if (!name) { errEl.textContent = 'Name is required.'; return; }
+  if (!/^[a-z0-9][a-z0-9_-]*$/i.test(name)) {
+    errEl.textContent = 'Use letters, numbers, hyphens, underscores only.';
+    return;
+  }
+  errEl.textContent = '';
+  document.getElementById('wizardStep1').classList.remove('active');
+  document.getElementById('wizardStep2').classList.add('active');
+  document.getElementById('wizardStepLabel').textContent = 'Step 2 of 2 \u2014 Triggers';
+}
+
+function wizardBack() {
+  document.getElementById('wizardStep2').classList.remove('active');
+  document.getElementById('wizardStep1').classList.add('active');
+  document.getElementById('wizardStepLabel').textContent = 'Step 1 of 2 \u2014 Identity';
+}
+
+function wizardSelectTrigger(type) {
+  _wizardTriggerType = type;
+  ['none','push','pr'].forEach(t => {
+    document.getElementById('wz_opt_' + t)?.classList.toggle('selected', t === type);
+  });
+  document.getElementById('wz_push_fields')?.classList.toggle('hidden', type !== 'push');
+  document.getElementById('wz_pr_fields')?.classList.toggle('hidden', type !== 'pr');
+}
+
+async function submitCreateWizard() {
+  const name = document.getElementById('wz_name').value.trim();
+  const desc = document.getElementById('wz_desc').value.trim();
+  const errEl = document.getElementById('wz_triggerError');
+  errEl.textContent = '';
+
+  if (_wizardTriggerType === 'push') {
+    const repo = document.getElementById('wz_push_repo').value.trim();
+    if (!repo || !/^[^/]+\/[^/]+$/.test(repo)) {
+      errEl.textContent = 'Enter a valid repo in owner/repo format.';
+      return;
+    }
+  } else if (_wizardTriggerType === 'pr') {
+    const repo = document.getElementById('wz_pr_repo').value.trim();
+    if (!repo || !/^[^/]+\/[^/]+$/.test(repo)) {
+      errEl.textContent = 'Enter a valid repo in owner/repo format.';
+      return;
+    }
+  }
+
+  const submitBtn = document.getElementById('wz_submitBtn');
+  submitBtn.disabled = true;
+  try {
+    const projBody = { name };
+    if (desc) projBody.description = desc;
+    const res = await fetch('/api/projects', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(projBody),
+    });
+    const data = await res.json();
+    if (!res.ok) { errEl.textContent = data.error || 'Failed to create project.'; return; }
+
+    if (_wizardTriggerType === 'push') {
+      const repo   = document.getElementById('wz_push_repo').value.trim();
+      const branch = document.getElementById('wz_push_branch').value.trim();
+      const trigBody = { type: 'push', repo, on_events: ['push'] };
+      if (branch) trigBody.branch = branch;
+      await fetch('/api/projects/' + encodeURIComponent(name) + '/triggers', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(trigBody),
+      });
+    } else if (_wizardTriggerType === 'pr') {
+      const repo   = document.getElementById('wz_pr_repo').value.trim();
+      const branch = document.getElementById('wz_pr_branch').value.trim();
+      const trigBody = { type: 'pull_request', repo, on_events: ['pull_request'] };
+      if (branch) trigBody.branch = branch;
+      await fetch('/api/projects/' + encodeURIComponent(name) + '/triggers', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(trigBody),
+      });
+    }
+
+    closeCreateWizard();
+    populateSidebar();
+    navigate('#projects/' + encodeURIComponent(name));
+  } catch (e) {
+    errEl.textContent = 'Network error: ' + e.message;
+  } finally {
+    submitBtn.disabled = false;
   }
 }
 
