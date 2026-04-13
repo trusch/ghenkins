@@ -33,10 +33,12 @@ exec podman run \
     --network host \
     --rm \
     -e XDG_RUNTIME_DIR=/run \
+    -e HOME="$HOME" \
     -e GHENKINS_LOG_LEVEL="${GHENKINS_LOG_LEVEL:-info}" \
-    -v "$HOST_CONFIG:/root/.config/ghenkins" \
-    -v "$HOST_DATA:/root/.local/share/ghenkins" \
-    -v "$HOST_CACHE:/root/.cache/ghenkins" \
-    -v "$HOME/.ssh:/root/.ssh:ro" \
+    -v /tmp:/tmp \
+    -v "$HOST_CONFIG:$HOST_CONFIG" \
+    -v "$HOST_DATA:$HOST_DATA" \
+    -v "$HOST_CACHE:$HOST_CACHE" \
+    -v "$HOME/.ssh:$HOME/.ssh:ro" \
     -v "$PODMAN_SOCK:/run/podman/podman.sock" \
     "$IMAGE" serve
