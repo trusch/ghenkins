@@ -39,6 +39,7 @@ func (s *memStore) MarkSeen(_ context.Context, sc store.SeenCommit) error {
 }
 
 func (s *memStore) CreateRun(_ context.Context, _ *store.Run) error          { return nil }
+func (s *memStore) UpdateRunSHA(_ context.Context, _, _ string) error { return nil }
 func (s *memStore) UpdateRunStatus(_ context.Context, _ string, _ store.RunStatus, _ *int, _ *time.Time) error {
 	return nil
 }
@@ -72,6 +73,14 @@ func (s *memStore) GetWatch(_ context.Context, _ string) (*store.DBWatch, error)
 func (s *memStore) CreateWatch(_ context.Context, _ *store.DBWatch) error           { return nil }
 func (s *memStore) UpdateWatch(_ context.Context, _ *store.DBWatch) error           { return nil }
 func (s *memStore) DeleteWatch(_ context.Context, _ string) error                   { return nil }
+func (s *memStore) ListProjects(_ context.Context) ([]*store.DBProject, error)       { return nil, nil }
+func (s *memStore) GetProject(_ context.Context, _ string) (*store.DBProject, error) { return nil, nil }
+func (s *memStore) CreateProject(_ context.Context, _ *store.DBProject) error        { return nil }
+func (s *memStore) UpdateProject(_ context.Context, _ *store.DBProject) error        { return nil }
+func (s *memStore) DeleteProject(_ context.Context, _ string) error                  { return nil }
+func (s *memStore) CreateTrigger(_ context.Context, _ *store.DBTrigger) error        { return nil }
+func (s *memStore) UpdateTrigger(_ context.Context, _ *store.DBTrigger) error        { return nil }
+func (s *memStore) DeleteTrigger(_ context.Context, _ string) error                  { return nil }
 func (s *memStore) CreateWorkflow(_ context.Context, _ *store.DBWorkflow) error     { return nil }
 func (s *memStore) UpdateWorkflow(_ context.Context, _ *store.DBWorkflow) error     { return nil }
 func (s *memStore) DeleteWorkflow(_ context.Context, _, _ string) error             { return nil }
