@@ -338,7 +338,14 @@ func (r *podmanJobRunner) RunJob(ctx context.Context, jobID string, job *Job, wf
 	// Collect artifacts written to /artifacts/ inside the container
 	if r.store != nil {
 		_ = filepath.WalkDir(artifactDir, func(path string, d fs.DirEntry, err error) error {
-			if err != nil || d.IsDir() {
+			if err != nil {
+				return nil
+			}
+			if d.IsDir() {
+				// Skip nix store subtrees — build-time deps, not user artifacts
+				if d.Name() == "nix" {
+					return filepath.SkipDir
+				}
 				return nil
 			}
 			fi, err := d.Info()
