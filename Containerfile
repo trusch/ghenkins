@@ -1,5 +1,5 @@
 # ── build stage ───────────────────────────────────────────────────────────────
-FROM golang:latest AS builder
+FROM golang:bookworm AS builder
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         libgpgme-dev \

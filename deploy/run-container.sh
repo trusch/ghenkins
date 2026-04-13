@@ -38,6 +38,5 @@ exec podman run \
     -v "$HOST_DATA:/root/.local/share/ghenkins" \
     -v "$HOST_CACHE:/root/.cache/ghenkins" \
     -v "$HOME/.ssh:/root/.ssh:ro" \
-    -v "$HOME/.gitconfig:/root/.gitconfig:ro,nodest" \
     -v "$PODMAN_SOCK:/run/podman/podman.sock" \
     "$IMAGE" serve
