@@ -382,6 +382,11 @@ func (d *Daemon) runJob(ctx context.Context, j poller.Job, wf config.WorkflowRef
 		finalStatus = store.RunStatusError
 		reportStatus = reporter.StatusError
 		desc = "internal error: " + err.Error()
+		// Write the error to the log so users can see it.
+		if logFile2, openErr := os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644); openErr == nil {
+			fmt.Fprintf(logFile2, "## ERROR: %v\n", err)
+			logFile2.Close()
+		}
 	} else if exitCode == 0 {
 		finalStatus = store.RunStatusSuccess
 		reportStatus = reporter.StatusSuccess

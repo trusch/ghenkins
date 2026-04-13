@@ -1,19 +1,19 @@
 [Unit]
-Description=ghenkins CI daemon
-After=network-online.target
-Wants=network-online.target
-Wants=podman.socket
-After=podman.socket
+Description=ghenkins CI daemon (containerized)
+After=network-online.target podman.socket
+Wants=network-online.target podman.socket
 
 [Service]
 Type=simple
-ExecStart=%h/.local/bin/ghenkins serve
+# Run the container; the script handles socket detection and volume mounts.
+ExecStart=%h/projects/ghenkins/deploy/run-container.sh
+ExecStop=podman stop ghenkins
 Restart=on-failure
 RestartSec=5s
 Environment=GHENKINS_LOG_LEVEL=info
+Environment=GHENKINS_IMAGE=localhost/ghenkins:latest
 # Allow up to 10 minutes for in-progress CI runs to finish on shutdown.
 TimeoutStopSec=10min
-# Send SIGTERM to the main process; let it finish gracefully before SIGKILL.
 KillMode=mixed
 
 StandardOutput=journal
