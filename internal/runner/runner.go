@@ -138,41 +138,55 @@ func (r *PodmanRunner) Run(ctx context.Context, j poller.Job, wf config.Workflow
 		return 0, fmt.Errorf("connect to podman: %w", err)
 	}
 
-	// 2. Ensure bare clone and create worktree
-	fmt.Fprintf(logWriter, "## Cloning/fetching %s/%s...\n", j.Owner, j.RepoName)
-	bareDir, err := ensureBareClone(ctx, r.cacheDir, j.Owner, j.RepoName)
-	if err != nil {
-		fmt.Fprintf(logWriter, "## ERROR: clone/fetch failed: %v\n", err)
-		return 0, fmt.Errorf("ensureBareClone: %w", err)
-	}
-	// Resolve "manual" (from manual trigger) to the actual branch HEAD SHA
+	// 2. Ensure bare clone and create worktree (skipped for repo-less manual workflows)
+	var wtDir string
 	sha := j.SHA
-	if sha == "manual" {
-		// In a bare clone, branches are stored as refs/heads/<branch>
-		ref := "refs/heads/" + j.Branch
-		out, rerr := exec.CommandContext(ctx, "git", "-C", bareDir, "rev-parse", ref).CombinedOutput()
-		if rerr != nil {
-			fmt.Fprintf(logWriter, "## ERROR: resolve branch %s HEAD: %v\n%s\n", j.Branch, rerr, out)
-			return 0, fmt.Errorf("resolve branch %s HEAD: %w\n%s", j.Branch, rerr, out)
+	if j.Repo == "" {
+		// No upstream repo — create a temp workspace and use "manual" as the SHA.
+		tmp, mkErr := os.MkdirTemp("", "ghenkins-wt-*")
+		if mkErr != nil {
+			return 0, fmt.Errorf("create temp workspace: %w", mkErr)
 		}
-		sha = strings.TrimSpace(string(out))
-		// Update the DB record so the UI shows the real commit SHA.
-		if r.Store != nil && r.CurrentRunID != "" {
-			_ = r.Store.UpdateRunSHA(ctx, r.CurrentRunID, sha)
+		defer os.RemoveAll(tmp)
+		wtDir = tmp
+		if sha == "manual" {
+			sha = "manual"
 		}
+		fmt.Fprintf(logWriter, "## No upstream repo — running without checkout\n")
+	} else {
+		fmt.Fprintf(logWriter, "## Cloning/fetching %s/%s...\n", j.Owner, j.RepoName)
+		bareDir, err := ensureBareClone(ctx, r.cacheDir, j.Owner, j.RepoName)
+		if err != nil {
+			fmt.Fprintf(logWriter, "## ERROR: clone/fetch failed: %v\n", err)
+			return 0, fmt.Errorf("ensureBareClone: %w", err)
+		}
+		// Resolve "manual" to the actual branch HEAD SHA
+		if sha == "manual" {
+			ref := "refs/heads/" + j.Branch
+			out, rerr := exec.CommandContext(ctx, "git", "-C", bareDir, "rev-parse", ref).CombinedOutput()
+			if rerr != nil {
+				fmt.Fprintf(logWriter, "## ERROR: resolve branch %s HEAD: %v\n%s\n", j.Branch, rerr, out)
+				return 0, fmt.Errorf("resolve branch %s HEAD: %w\n%s", j.Branch, rerr, out)
+			}
+			sha = strings.TrimSpace(string(out))
+			if r.Store != nil && r.CurrentRunID != "" {
+				_ = r.Store.UpdateRunSHA(ctx, r.CurrentRunID, sha)
+			}
+		}
+		shortSHA := sha
+		if len(shortSHA) > 7 {
+			shortSHA = shortSHA[:7]
+		}
+		fmt.Fprintf(logWriter, "## Checking out %s...\n", shortSHA)
+		var cleanup func()
+		wtDir, cleanup, err = addWorktree(ctx, bareDir, sha)
+		if err != nil {
+			fmt.Fprintf(logWriter, "## ERROR: worktree checkout failed: %v\n", err)
+			return 0, fmt.Errorf("addWorktree: %w", err)
+		}
+		defer cleanup()
+		fmt.Fprintf(logWriter, "## Workspace ready at %s\n", wtDir)
 	}
-	shortSHA := sha
-	if len(shortSHA) > 7 {
-		shortSHA = shortSHA[:7]
-	}
-	fmt.Fprintf(logWriter, "## Checking out %s...\n", shortSHA)
-	wtDir, cleanup, err := addWorktree(ctx, bareDir, sha)
-	if err != nil {
-		fmt.Fprintf(logWriter, "## ERROR: worktree checkout failed: %v\n", err)
-		return 0, fmt.Errorf("addWorktree: %w", err)
-	}
-	defer cleanup()
-	fmt.Fprintf(logWriter, "## Workspace ready at %s\n", wtDir)
 
 	// 3. Generate event JSON and write to temp file
 	eventJSON, err := GenerateEventJSON(j.Repo, j.Owner, j.RepoName, j.SHA, j.Branch, j.PRNumber, j.EventType)

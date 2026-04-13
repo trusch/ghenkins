@@ -482,6 +482,9 @@ func generateID() string {
 
 func splitRepo(repo string) (string, string) {
 	parts := strings.SplitN(repo, "/", 2)
+	if len(parts) < 2 {
+		return "", parts[0]
+	}
 	return parts[0], parts[1]
 }
 
