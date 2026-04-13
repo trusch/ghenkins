@@ -78,6 +78,27 @@ type Session struct {
 	ExpiresAt time.Time
 }
 
+// DBProject is the new canonical project type, replacing DBWatch.
+type DBProject struct {
+	Name        string       `json:"name"`
+	Description string       `json:"description"`
+	Workflows   []*DBWorkflow `json:"workflows"`
+	Triggers    []*DBTrigger  `json:"triggers"`
+}
+
+// DBTrigger represents a repo/event trigger attached to a project.
+type DBTrigger struct {
+	ID          string   `json:"id"`
+	ProjectName string   `json:"project_name"`
+	Type        string   `json:"type"` // "push", "pull_request", "manual"
+	Repo        string   `json:"repo"`
+	Branch      string   `json:"branch,omitempty"`
+	PR          int      `json:"pr,omitempty"`
+	OnEvents    []string `json:"on_events"`
+}
+
+// DBWatch is the deprecated legacy type. Use DBProject instead.
+// Populated from DBProject + first push trigger for backward compatibility.
 type DBWatch struct {
 	Name      string       `json:"name"`
 	Repo      string       `json:"repo"`
@@ -89,7 +110,7 @@ type DBWatch struct {
 
 type DBWorkflow struct {
 	ID             string            `json:"id"`
-	WatchName      string            `json:"watch_name"`
+	ProjectName    string            `json:"project_name"`
 	Name           string            `json:"name"`
 	Path           string            `json:"path"`
 	RunnerImage    string            `json:"runner_image,omitempty"`
@@ -97,6 +118,10 @@ type DBWorkflow struct {
 	Env            map[string]string `json:"env"`
 	TimeoutMinutes int               `json:"timeout_minutes,omitempty"`
 }
+
+// WatchName returns ProjectName for backward compatibility.
+// Deprecated: use ProjectName directly.
+func (wf *DBWorkflow) WatchNameCompat() string { return wf.ProjectName }
 
 type RunArtifact struct {
 	ID        string    `json:"id"`
@@ -132,15 +157,33 @@ type Store interface {
 	GetSession(ctx context.Context, token string) (*Session, error)
 	DeleteSession(ctx context.Context, token string) error
 
-	// Watches
-	ListWatches(ctx context.Context) ([]*DBWatch, error)
-	GetWatch(ctx context.Context, name string) (*DBWatch, error)
-	CreateWatch(ctx context.Context, w *DBWatch) error
-	UpdateWatch(ctx context.Context, w *DBWatch) error
-	DeleteWatch(ctx context.Context, name string) error
+	// Projects (replaces Watches)
+	ListProjects(ctx context.Context) ([]*DBProject, error)
+	GetProject(ctx context.Context, name string) (*DBProject, error)
+	CreateProject(ctx context.Context, p *DBProject) error
+	UpdateProject(ctx context.Context, p *DBProject) error
+	DeleteProject(ctx context.Context, name string) error
+
+	// Triggers
+	CreateTrigger(ctx context.Context, t *DBTrigger) error
+	UpdateTrigger(ctx context.Context, t *DBTrigger) error
+	DeleteTrigger(ctx context.Context, triggerID string) error
+
+	// Workflows
 	CreateWorkflow(ctx context.Context, wf *DBWorkflow) error
 	UpdateWorkflow(ctx context.Context, wf *DBWorkflow) error
-	DeleteWorkflow(ctx context.Context, watchName, workflowName string) error
+	DeleteWorkflow(ctx context.Context, projectName, workflowName string) error
+
+	// Deprecated: use ListProjects
+	ListWatches(ctx context.Context) ([]*DBWatch, error)
+	// Deprecated: use GetProject
+	GetWatch(ctx context.Context, name string) (*DBWatch, error)
+	// Deprecated: use CreateProject
+	CreateWatch(ctx context.Context, w *DBWatch) error
+	// Deprecated: use UpdateProject
+	UpdateWatch(ctx context.Context, w *DBWatch) error
+	// Deprecated: use DeleteProject
+	DeleteWatch(ctx context.Context, name string) error
 
 	// RunJobs
 	UpsertRunJob(ctx context.Context, job *RunJob) error
@@ -193,7 +236,7 @@ func (s *SQLiteStore) CreateRun(ctx context.Context, r *Run) error {
 	defer s.mu.Unlock()
 
 	_, err := s.db.ExecContext(ctx,
-		`INSERT INTO runs (id, watch_name, repo, sha, workflow_name, status, started_at, finished_at, exit_code, log_path)
+		`INSERT INTO runs (id, project_name, repo, sha, workflow_name, status, started_at, finished_at, exit_code, log_path)
 		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		r.ID, r.WatchName, r.Repo, r.SHA, r.WorkflowName, string(r.Status),
 		r.StartedAt.UTC().Format(time.RFC3339Nano),
@@ -231,7 +274,7 @@ func (s *SQLiteStore) UpdateRunStatus(ctx context.Context, id string, status Run
 
 func (s *SQLiteStore) GetRun(ctx context.Context, id string) (*Run, error) {
 	row := s.db.QueryRowContext(ctx,
-		`SELECT id, watch_name, repo, sha, workflow_name, status, started_at, finished_at, exit_code, log_path
+		`SELECT id, project_name, repo, sha, workflow_name, status, started_at, finished_at, exit_code, log_path
 		 FROM runs WHERE id = ?`, id)
 	return scanRun(row)
 }
@@ -241,7 +284,7 @@ func (s *SQLiteStore) ListRuns(ctx context.Context, limit int) ([]Run, error) {
 		limit = 10000
 	}
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT id, watch_name, repo, sha, workflow_name, status, started_at, finished_at, exit_code, log_path
+		`SELECT id, project_name, repo, sha, workflow_name, status, started_at, finished_at, exit_code, log_path
 		 FROM runs ORDER BY started_at DESC LIMIT ?`, limit)
 	if err != nil {
 		return nil, fmt.Errorf("list runs: %w", err)
@@ -445,96 +488,73 @@ func (s *SQLiteStore) DeleteSession(ctx context.Context, token string) error {
 	return nil
 }
 
-// ---- Watches ----
+// ---- Projects ----
 
-func (s *SQLiteStore) ListWatches(ctx context.Context) ([]*DBWatch, error) {
+func (s *SQLiteStore) ListProjects(ctx context.Context) ([]*DBProject, error) {
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT name, repo, COALESCE(branch,''), COALESCE(pr,0), on_events FROM watches ORDER BY name ASC`)
+		`SELECT name, description FROM projects ORDER BY name ASC`)
 	if err != nil {
-		return nil, fmt.Errorf("list watches: %w", err)
+		return nil, fmt.Errorf("list projects: %w", err)
 	}
 	defer rows.Close()
 
-	var watches []*DBWatch
+	var projects []*DBProject
 	for rows.Next() {
-		w, err := scanWatch(rows)
-		if err != nil {
-			return nil, err
+		p := &DBProject{}
+		if err := rows.Scan(&p.Name, &p.Description); err != nil {
+			return nil, fmt.Errorf("scan project: %w", err)
 		}
-		watches = append(watches, w)
+		projects = append(projects, p)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 
-	for _, w := range watches {
-		if err := s.loadWorkflows(ctx, w); err != nil {
+	for _, p := range projects {
+		if err := s.loadProjectWorkflows(ctx, p); err != nil {
+			return nil, err
+		}
+		if err := s.loadProjectTriggers(ctx, p); err != nil {
 			return nil, err
 		}
 	}
-	return watches, nil
+	return projects, nil
 }
 
-func (s *SQLiteStore) GetWatch(ctx context.Context, name string) (*DBWatch, error) {
-	row := s.db.QueryRowContext(ctx,
-		`SELECT name, repo, COALESCE(branch,''), COALESCE(pr,0), on_events FROM watches WHERE name = ?`, name)
-	w, err := scanWatch(row)
+func (s *SQLiteStore) GetProject(ctx context.Context, name string) (*DBProject, error) {
+	p := &DBProject{}
+	err := s.db.QueryRowContext(ctx,
+		`SELECT name, description FROM projects WHERE name = ?`, name,
+	).Scan(&p.Name, &p.Description)
+	if err == sql.ErrNoRows {
+		return nil, fmt.Errorf("project not found")
+	}
 	if err != nil {
+		return nil, fmt.Errorf("get project: %w", err)
+	}
+	if err := s.loadProjectWorkflows(ctx, p); err != nil {
 		return nil, err
 	}
-	if err := s.loadWorkflows(ctx, w); err != nil {
+	if err := s.loadProjectTriggers(ctx, p); err != nil {
 		return nil, err
 	}
-	return w, nil
+	return p, nil
 }
 
-func (s *SQLiteStore) loadWorkflows(ctx context.Context, w *DBWatch) error {
-	rows, err := s.db.QueryContext(ctx,
-		`SELECT id, watch_name, name, path, COALESCE(runner_image,''), secrets, env, COALESCE(timeout_minutes,0) FROM workflows WHERE watch_name = ? ORDER BY name ASC`,
-		w.Name)
-	if err != nil {
-		return fmt.Errorf("load workflows: %w", err)
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		wf, err := scanWorkflow(rows)
-		if err != nil {
-			return err
-		}
-		w.Workflows = append(w.Workflows, wf)
-	}
-	return rows.Err()
-}
-
-func (s *SQLiteStore) CreateWatch(ctx context.Context, w *DBWatch) error {
+func (s *SQLiteStore) CreateProject(ctx context.Context, p *DBProject) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	onEventsJSON, err := json.Marshal(w.OnEvents)
-	if err != nil {
-		return fmt.Errorf("marshal on_events: %w", err)
-	}
-
-	var prVal any
-	if w.PR != 0 {
-		prVal = w.PR
-	}
-	var branchVal any
-	if w.Branch != "" {
-		branchVal = w.Branch
-	}
-
-	_, err = s.db.ExecContext(ctx,
-		`INSERT INTO watches (name, repo, branch, pr, on_events) VALUES (?, ?, ?, ?, ?)`,
-		w.Name, w.Repo, branchVal, prVal, string(onEventsJSON),
+	_, err := s.db.ExecContext(ctx,
+		`INSERT INTO projects (name, description) VALUES (?, ?)`,
+		p.Name, p.Description,
 	)
 	if err != nil {
-		return fmt.Errorf("create watch: %w", err)
+		return fmt.Errorf("create project: %w", err)
 	}
 
-	for _, wf := range w.Workflows {
-		wf.WatchName = w.Name
+	for _, wf := range p.Workflows {
+		wf.ProjectName = p.Name
 		if wf.ID == "" {
 			wf.ID = generateStoreID()
 		}
@@ -542,47 +562,294 @@ func (s *SQLiteStore) CreateWatch(ctx context.Context, w *DBWatch) error {
 			return err
 		}
 	}
+
+	for _, t := range p.Triggers {
+		t.ProjectName = p.Name
+		if t.ID == "" {
+			t.ID = generateStoreID()
+		}
+		if err := s.insertTrigger(ctx, t); err != nil {
+			return err
+		}
+	}
 	return nil
+}
+
+func (s *SQLiteStore) UpdateProject(ctx context.Context, p *DBProject) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	_, err := s.db.ExecContext(ctx,
+		`UPDATE projects SET description = ? WHERE name = ?`,
+		p.Description, p.Name,
+	)
+	if err != nil {
+		return fmt.Errorf("update project: %w", err)
+	}
+	return nil
+}
+
+func (s *SQLiteStore) DeleteProject(ctx context.Context, name string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	_, err := s.db.ExecContext(ctx, `DELETE FROM projects WHERE name = ?`, name)
+	if err != nil {
+		return fmt.Errorf("delete project: %w", err)
+	}
+	return nil
+}
+
+func (s *SQLiteStore) loadProjectWorkflows(ctx context.Context, p *DBProject) error {
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT id, project_name, name, path, COALESCE(runner_image,''), secrets, env, COALESCE(timeout_minutes,0)
+		 FROM workflows WHERE project_name = ? ORDER BY name ASC`,
+		p.Name)
+	if err != nil {
+		return fmt.Errorf("load workflows: %w", err)
+	}
+	defer rows.Close()
+
+	p.Workflows = []*DBWorkflow{}
+	for rows.Next() {
+		wf, err := scanWorkflow(rows)
+		if err != nil {
+			return err
+		}
+		p.Workflows = append(p.Workflows, wf)
+	}
+	return rows.Err()
+}
+
+func (s *SQLiteStore) loadProjectTriggers(ctx context.Context, p *DBProject) error {
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT id, project_name, type, COALESCE(repo,''), COALESCE(branch,''), COALESCE(pr,0), on_events
+		 FROM project_triggers WHERE project_name = ? ORDER BY id ASC`,
+		p.Name)
+	if err != nil {
+		return fmt.Errorf("load triggers: %w", err)
+	}
+	defer rows.Close()
+
+	p.Triggers = []*DBTrigger{}
+	for rows.Next() {
+		t, err := scanTrigger(rows)
+		if err != nil {
+			return err
+		}
+		p.Triggers = append(p.Triggers, t)
+	}
+	return rows.Err()
+}
+
+// ---- Triggers ----
+
+func (s *SQLiteStore) CreateTrigger(ctx context.Context, t *DBTrigger) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if t.ID == "" {
+		t.ID = generateStoreID()
+	}
+	return s.insertTrigger(ctx, t)
+}
+
+func (s *SQLiteStore) insertTrigger(ctx context.Context, t *DBTrigger) error {
+	onEventsJSON, err := json.Marshal(t.OnEvents)
+	if err != nil {
+		return fmt.Errorf("marshal on_events: %w", err)
+	}
+	var branchVal, repoVal any
+	if t.Branch != "" {
+		branchVal = t.Branch
+	}
+	if t.Repo != "" {
+		repoVal = t.Repo
+	}
+	var prVal any
+	if t.PR != 0 {
+		prVal = t.PR
+	}
+	_, err = s.db.ExecContext(ctx,
+		`INSERT INTO project_triggers (id, project_name, type, repo, branch, pr, on_events)
+		 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		t.ID, t.ProjectName, t.Type, repoVal, branchVal, prVal, string(onEventsJSON),
+	)
+	if err != nil {
+		return fmt.Errorf("insert trigger: %w", err)
+	}
+	return nil
+}
+
+func (s *SQLiteStore) UpdateTrigger(ctx context.Context, t *DBTrigger) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	onEventsJSON, err := json.Marshal(t.OnEvents)
+	if err != nil {
+		return fmt.Errorf("marshal on_events: %w", err)
+	}
+	var branchVal, repoVal any
+	if t.Branch != "" {
+		branchVal = t.Branch
+	}
+	if t.Repo != "" {
+		repoVal = t.Repo
+	}
+	var prVal any
+	if t.PR != 0 {
+		prVal = t.PR
+	}
+	_, err = s.db.ExecContext(ctx,
+		`UPDATE project_triggers SET type = ?, repo = ?, branch = ?, pr = ?, on_events = ? WHERE id = ?`,
+		t.Type, repoVal, branchVal, prVal, string(onEventsJSON), t.ID,
+	)
+	if err != nil {
+		return fmt.Errorf("update trigger: %w", err)
+	}
+	return nil
+}
+
+func (s *SQLiteStore) DeleteTrigger(ctx context.Context, triggerID string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	_, err := s.db.ExecContext(ctx, `DELETE FROM project_triggers WHERE id = ?`, triggerID)
+	if err != nil {
+		return fmt.Errorf("delete trigger: %w", err)
+	}
+	return nil
+}
+
+// ---- Watches (deprecated — thin wrappers over Project methods) ----
+
+func (s *SQLiteStore) ListWatches(ctx context.Context) ([]*DBWatch, error) {
+	projects, err := s.ListProjects(ctx)
+	if err != nil {
+		return nil, err
+	}
+	watches := make([]*DBWatch, 0, len(projects))
+	for _, p := range projects {
+		watches = append(watches, projectToWatch(p))
+	}
+	return watches, nil
+}
+
+func (s *SQLiteStore) GetWatch(ctx context.Context, name string) (*DBWatch, error) {
+	p, err := s.GetProject(ctx, name)
+	if err != nil {
+		return nil, err
+	}
+	return projectToWatch(p), nil
+}
+
+func (s *SQLiteStore) CreateWatch(ctx context.Context, w *DBWatch) error {
+	p := watchToProject(w)
+	return s.CreateProject(ctx, p)
 }
 
 func (s *SQLiteStore) UpdateWatch(ctx context.Context, w *DBWatch) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	// Update the first push trigger to reflect new repo/branch/pr/on_events.
 	onEventsJSON, err := json.Marshal(w.OnEvents)
 	if err != nil {
 		return fmt.Errorf("marshal on_events: %w", err)
 	}
-
-	var prVal any
+	var prVal, branchVal any
 	if w.PR != 0 {
 		prVal = w.PR
 	}
-	var branchVal any
 	if w.Branch != "" {
 		branchVal = w.Branch
 	}
+	triggerType := "push"
+	if w.PR != 0 {
+		triggerType = "pull_request"
+	}
 
-	_, err = s.db.ExecContext(ctx,
-		`UPDATE watches SET repo = ?, branch = ?, pr = ?, on_events = ? WHERE name = ?`,
-		w.Repo, branchVal, prVal, string(onEventsJSON), w.Name,
-	)
+	// Upsert: update existing trigger if any, else insert.
+	var triggerID string
+	err = s.db.QueryRowContext(ctx,
+		`SELECT id FROM project_triggers WHERE project_name = ? LIMIT 1`, w.Name,
+	).Scan(&triggerID)
+	if err == sql.ErrNoRows {
+		triggerID = generateStoreID()
+		_, err = s.db.ExecContext(ctx,
+			`INSERT INTO project_triggers (id, project_name, type, repo, branch, pr, on_events)
+			 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+			triggerID, w.Name, triggerType, w.Repo, branchVal, prVal, string(onEventsJSON),
+		)
+	} else if err == nil {
+		_, err = s.db.ExecContext(ctx,
+			`UPDATE project_triggers SET type = ?, repo = ?, branch = ?, pr = ?, on_events = ? WHERE id = ?`,
+			triggerType, w.Repo, branchVal, prVal, string(onEventsJSON), triggerID,
+		)
+	}
 	if err != nil {
-		return fmt.Errorf("update watch: %w", err)
+		return fmt.Errorf("update watch trigger: %w", err)
 	}
 	return nil
 }
 
 func (s *SQLiteStore) DeleteWatch(ctx context.Context, name string) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	_, err := s.db.ExecContext(ctx, `DELETE FROM watches WHERE name = ?`, name)
-	if err != nil {
-		return fmt.Errorf("delete watch: %w", err)
-	}
-	return nil
+	return s.DeleteProject(ctx, name)
 }
+
+// projectToWatch builds a DBWatch from a DBProject using the first trigger.
+func projectToWatch(p *DBProject) *DBWatch {
+	w := &DBWatch{
+		Name:      p.Name,
+		OnEvents:  []string{"push"},
+		Workflows: p.Workflows,
+	}
+	if w.Workflows == nil {
+		w.Workflows = []*DBWorkflow{}
+	}
+	for _, t := range p.Triggers {
+		w.Repo = t.Repo
+		w.Branch = t.Branch
+		w.PR = t.PR
+		if len(t.OnEvents) > 0 {
+			w.OnEvents = t.OnEvents
+		}
+		break // use first trigger only
+	}
+	return w
+}
+
+// watchToProject converts a DBWatch into a DBProject with one trigger.
+func watchToProject(w *DBWatch) *DBProject {
+	p := &DBProject{
+		Name:      w.Name,
+		Workflows: w.Workflows,
+	}
+	if p.Workflows == nil {
+		p.Workflows = []*DBWorkflow{}
+	}
+	onEvents := w.OnEvents
+	if len(onEvents) == 0 {
+		onEvents = []string{"push"}
+	}
+	triggerType := "push"
+	if w.PR != 0 {
+		triggerType = "pull_request"
+	}
+	if w.Repo != "" {
+		p.Triggers = []*DBTrigger{{
+			ProjectName: w.Name,
+			Type:        triggerType,
+			Repo:        w.Repo,
+			Branch:      w.Branch,
+			PR:          w.PR,
+			OnEvents:    onEvents,
+		}}
+	}
+	return p
+}
+
+// ---- Workflows ----
 
 func (s *SQLiteStore) CreateWorkflow(ctx context.Context, wf *DBWorkflow) error {
 	s.mu.Lock()
@@ -609,8 +876,8 @@ func (s *SQLiteStore) insertWorkflow(ctx context.Context, wf *DBWorkflow) error 
 		runnerImage = wf.RunnerImage
 	}
 	_, err = s.db.ExecContext(ctx,
-		`INSERT INTO workflows (id, watch_name, name, path, runner_image, secrets, env, timeout_minutes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-		wf.ID, wf.WatchName, wf.Name, wf.Path, runnerImage, string(secretsJSON), string(envJSON), wf.TimeoutMinutes,
+		`INSERT INTO workflows (id, project_name, name, path, runner_image, secrets, env, timeout_minutes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		wf.ID, wf.ProjectName, wf.Name, wf.Path, runnerImage, string(secretsJSON), string(envJSON), wf.TimeoutMinutes,
 	)
 	if err != nil {
 		return fmt.Errorf("insert workflow: %w", err)
@@ -635,8 +902,8 @@ func (s *SQLiteStore) UpdateWorkflow(ctx context.Context, wf *DBWorkflow) error 
 		runnerImage = wf.RunnerImage
 	}
 	_, err = s.db.ExecContext(ctx,
-		`UPDATE workflows SET path = ?, runner_image = ?, secrets = ?, env = ?, timeout_minutes = ? WHERE watch_name = ? AND name = ?`,
-		wf.Path, runnerImage, string(secretsJSON), string(envJSON), wf.TimeoutMinutes, wf.WatchName, wf.Name,
+		`UPDATE workflows SET path = ?, runner_image = ?, secrets = ?, env = ?, timeout_minutes = ? WHERE project_name = ? AND name = ?`,
+		wf.Path, runnerImage, string(secretsJSON), string(envJSON), wf.TimeoutMinutes, wf.ProjectName, wf.Name,
 	)
 	if err != nil {
 		return fmt.Errorf("update workflow: %w", err)
@@ -644,12 +911,12 @@ func (s *SQLiteStore) UpdateWorkflow(ctx context.Context, wf *DBWorkflow) error 
 	return nil
 }
 
-func (s *SQLiteStore) DeleteWorkflow(ctx context.Context, watchName, workflowName string) error {
+func (s *SQLiteStore) DeleteWorkflow(ctx context.Context, projectName, workflowName string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	_, err := s.db.ExecContext(ctx,
-		`DELETE FROM workflows WHERE watch_name = ? AND name = ?`, watchName, workflowName)
+		`DELETE FROM workflows WHERE project_name = ? AND name = ?`, projectName, workflowName)
 	if err != nil {
 		return fmt.Errorf("delete workflow: %w", err)
 	}
@@ -820,27 +1087,10 @@ func scanUser(s scanner) (*User, error) {
 	return &u, nil
 }
 
-func scanWatch(s scanner) (*DBWatch, error) {
-	var w DBWatch
-	var onEventsJSON string
-	err := s.Scan(&w.Name, &w.Repo, &w.Branch, &w.PR, &onEventsJSON)
-	if err == sql.ErrNoRows {
-		return nil, fmt.Errorf("watch not found")
-	}
-	if err != nil {
-		return nil, fmt.Errorf("scan watch: %w", err)
-	}
-	if err := json.Unmarshal([]byte(onEventsJSON), &w.OnEvents); err != nil {
-		w.OnEvents = []string{"push"}
-	}
-	w.Workflows = []*DBWorkflow{}
-	return &w, nil
-}
-
 func scanWorkflow(s scanner) (*DBWorkflow, error) {
 	var wf DBWorkflow
 	var secretsJSON, envJSON string
-	err := s.Scan(&wf.ID, &wf.WatchName, &wf.Name, &wf.Path, &wf.RunnerImage, &secretsJSON, &envJSON, &wf.TimeoutMinutes)
+	err := s.Scan(&wf.ID, &wf.ProjectName, &wf.Name, &wf.Path, &wf.RunnerImage, &secretsJSON, &envJSON, &wf.TimeoutMinutes)
 	if err != nil {
 		return nil, fmt.Errorf("scan workflow: %w", err)
 	}
@@ -851,6 +1101,19 @@ func scanWorkflow(s scanner) (*DBWorkflow, error) {
 		wf.Env = map[string]string{}
 	}
 	return &wf, nil
+}
+
+func scanTrigger(s scanner) (*DBTrigger, error) {
+	var t DBTrigger
+	var onEventsJSON string
+	err := s.Scan(&t.ID, &t.ProjectName, &t.Type, &t.Repo, &t.Branch, &t.PR, &onEventsJSON)
+	if err != nil {
+		return nil, fmt.Errorf("scan trigger: %w", err)
+	}
+	if err := json.Unmarshal([]byte(onEventsJSON), &t.OnEvents); err != nil {
+		t.OnEvents = []string{"push"}
+	}
+	return &t, nil
 }
 
 func scanRunJob(s scanner) (*RunJob, error) {

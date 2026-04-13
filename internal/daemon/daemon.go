@@ -177,7 +177,7 @@ func configWatchToDBWatch(w config.Watch) *store.DBWatch {
 	}
 	for _, wf := range w.Workflows {
 		dbw.Workflows = append(dbw.Workflows, &store.DBWorkflow{
-			WatchName:      w.Name,
+			ProjectName:    w.Name,
 			Name:           wf.Name,
 			Path:           wf.Path,
 			RunnerImage:    wf.RunnerImage,

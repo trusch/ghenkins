@@ -914,7 +914,7 @@ type workflowRequestBody struct {
 
 func (b *workflowRequestBody) toDBWorkflow(watchName string) *store.DBWorkflow {
 	wf := &store.DBWorkflow{
-		WatchName:      watchName,
+		ProjectName:    watchName,
 		Name:           b.Name,
 		Path:           b.Path,
 		RunnerImage:    b.RunnerImage,
