@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"io"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -335,39 +334,63 @@ func (r *podmanJobRunner) RunJob(ctx context.Context, jobID string, job *Job, wf
 		finalStatus = JobStatusSuccess
 	}
 
-	// Collect artifacts written to /artifacts/ inside the container
+	// Collect artifacts written to /artifacts/ inside the container.
+	// If the job declares artifact-paths, only collect those specific files.
+	// Otherwise collect all direct children of artifactDir (non-recursive).
 	if r.store != nil {
-		_ = filepath.WalkDir(artifactDir, func(path string, d fs.DirEntry, err error) error {
-			if err != nil {
-				return nil
-			}
-			if d.IsDir() {
-				// Skip nix store subtrees — build-time deps, not user artifacts
-				if d.Name() == "nix" {
-					return filepath.SkipDir
+		if len(job.ArtifactPaths) > 0 {
+			// Explicit artifact list: each entry is a path relative to /artifacts/
+			for _, relPath := range job.ArtifactPaths {
+				hostPath := filepath.Join(artifactDir, relPath)
+				fi, err := os.Stat(hostPath)
+				if err != nil || fi.IsDir() {
+					continue
 				}
-				return nil
+				h := sha256.New()
+				f, err := os.Open(hostPath)
+				if err != nil {
+					continue
+				}
+				_, _ = io.Copy(h, f)
+				f.Close()
+				_ = r.store.UpsertArtifact(context.Background(), store.RunArtifact{
+					ID:       uuid.New().String(),
+					RunID:    info.RunID,
+					Filename: relPath,
+					Size:     fi.Size(),
+					SHA256:   fmt.Sprintf("%x", h.Sum(nil)),
+				})
 			}
-			fi, err := d.Info()
-			if err != nil {
-				return nil
+		} else {
+			// No explicit list: collect direct children of artifactDir only (non-recursive)
+			entries, err := os.ReadDir(artifactDir)
+			if err == nil {
+				for _, entry := range entries {
+					if entry.IsDir() {
+						continue
+					}
+					hostPath := filepath.Join(artifactDir, entry.Name())
+					fi, err := entry.Info()
+					if err != nil {
+						continue
+					}
+					h := sha256.New()
+					f, err := os.Open(hostPath)
+					if err != nil {
+						continue
+					}
+					_, _ = io.Copy(h, f)
+					f.Close()
+					_ = r.store.UpsertArtifact(context.Background(), store.RunArtifact{
+						ID:       uuid.New().String(),
+						RunID:    info.RunID,
+						Filename: entry.Name(),
+						Size:     fi.Size(),
+						SHA256:   fmt.Sprintf("%x", h.Sum(nil)),
+					})
+				}
 			}
-			h := sha256.New()
-			f, err := os.Open(path)
-			if err != nil {
-				return nil
-			}
-			defer f.Close()
-			_, _ = io.Copy(h, f)
-			_ = r.store.UpsertArtifact(context.Background(), store.RunArtifact{
-				ID:       uuid.New().String(),
-				RunID:    info.RunID,
-				Filename: filepath.Base(path),
-				Size:     fi.Size(),
-				SHA256:   fmt.Sprintf("%x", h.Sum(nil)),
-			})
-			return nil
-		})
+		}
 	}
 
 	return JobResult{

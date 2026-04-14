@@ -296,7 +296,10 @@ func (d *Daemon) runJob(ctx context.Context, j poller.Job, wf config.WorkflowRef
 	if wf.TimeoutMinutes > 0 {
 		runCtx, cancel = context.WithTimeout(runCtx, time.Duration(wf.TimeoutMinutes)*time.Minute)
 	}
-	runID := generateID()
+	runID := j.RunID
+	if runID == "" {
+		runID = generateID()
+	}
 	d.inFlight.Store(runID, cancel)
 	defer func() { cancel(); d.inFlight.Delete(runID) }()
 
@@ -441,6 +444,8 @@ func (d *Daemon) TriggerRun(ctx context.Context, projectName, workflowName strin
 		owner, repoName = splitRepo(repo)
 	}
 
+	runID := generateID()
+
 	job := poller.Job{
 		WatchName: projectName,
 		Repo:      repo,
@@ -449,6 +454,7 @@ func (d *Daemon) TriggerRun(ctx context.Context, projectName, workflowName strin
 		SHA:       "manual",
 		Branch:    branch,
 		EventType: "manual",
+		RunID:     runID,
 		WorkflowRefs: []config.WorkflowRef{{
 			Name:           wfRef.Name,
 			Path:           wfRef.Path,
@@ -466,7 +472,7 @@ func (d *Daemon) TriggerRun(ctx context.Context, projectName, workflowName strin
 		return "", fmt.Errorf("job queue full")
 	}
 
-	return "", nil
+	return runID, nil
 }
 
 // CancelRun implements RunControl. It cancels the in-flight run with the given ID.

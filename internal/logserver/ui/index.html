@@ -1338,10 +1338,13 @@ async function showDashboard() {
 }
 
 async function renderDashboard() {
+  const routeAtStart = currentRoute;
   let stats = {}, runs = [], projects = [];
   try { stats    = await fetch('/api/stats').then(r => r.json()); } catch (_) {}
   try { runs     = await fetch('/runs').then(r => r.json()); } catch (_) {}
   try { projects = await fetch('/api/projects').then(r => r.json()); } catch (_) {}
+  // Abort if the user navigated away while we were fetching
+  if (currentRoute !== routeAtStart) return;
 
   // Stat cards
   const activeColor = (stats.active_runs > 0) ? 'var(--status-running)' : 'var(--text-primary)';
@@ -1516,7 +1519,9 @@ async function showProject(name) {
   }
 
   renderProjectView(project, runs);
+  const projectRoute = window.location.hash;
   pollTimer = setInterval(async () => {
+    if (currentRoute !== projectRoute) return;
     try {
       const r = await fetch('/runs').then(r => r.json());
       refreshProjectRuns(name, r);
@@ -2091,10 +2096,15 @@ async function _doTriggerWorkflow(projectName, wfName, inputValues) {
       { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({inputs: inputValues}) }
     );
     if (!res.ok) { const d = await res.json().catch(()=>({})); toast(d.error || 'Trigger failed.', 'error'); return; }
+    const data = await res.json().catch(() => ({}));
     toast('Run triggered: ' + wfName, 'success');
-    setTimeout(() => {
-      fetch('/runs').then(r => r.json()).then(runs => refreshProjectRuns(projectName, runs)).catch(()=>{});
-    }, 800);
+    if (data.id) {
+      navigate('#projects/' + encodeURIComponent(projectName) + '/runs/' + encodeURIComponent(data.id));
+    } else {
+      setTimeout(() => {
+        fetch('/runs').then(r => r.json()).then(runs => refreshProjectRuns(projectName, runs)).catch(()=>{});
+      }, 800);
+    }
   } catch (e) {
     toast('Network error: ' + e.message, 'error');
   }

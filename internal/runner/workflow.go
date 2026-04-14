@@ -54,6 +54,7 @@ type Job struct {
 	Steps          []*Step           `yaml:"steps"`
 	ExtraBinds     []JobBindMount    `yaml:"extra-binds"`
 	Volumes        []JobVolumeMount  `yaml:"volumes"`
+	ArtifactPaths  []string          `yaml:"artifact-paths"`
 }
 
 type Step struct {

@@ -27,6 +27,7 @@ type Job struct {
 	EventType    string // "push" | "pull_request"
 	WorkflowRefs []config.WorkflowRef
 	Inputs       map[string]string // caller-provided inputs for manual triggers
+	RunID        string            // pre-assigned run ID for manual triggers; empty = auto-generate
 }
 
 type WatchProvider func(ctx context.Context) ([]config.Watch, error)

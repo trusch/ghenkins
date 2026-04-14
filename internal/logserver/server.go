@@ -775,12 +775,12 @@ func (s *Server) handleTriggerRun(w http.ResponseWriter, r *http.Request) {
 	// Inputs are optional; ignore decode errors (e.g. empty body).
 	json.NewDecoder(r.Body).Decode(&body) //nolint:errcheck
 
-	_, err := s.rc.TriggerRun(r.Context(), projectName, wfName, body.Inputs)
+	runID, err := s.rc.TriggerRun(r.Context(), projectName, wfName, body.Inputs)
 	if err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
+	writeJSON(w, http.StatusOK, map[string]string{"id": runID})
 }
 
 func (s *Server) handleCancelRun(w http.ResponseWriter, r *http.Request) {
