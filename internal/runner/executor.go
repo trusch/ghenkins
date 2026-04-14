@@ -222,12 +222,23 @@ func (r *podmanJobRunner) RunJob(ctx context.Context, jobID string, job *Job, wf
 		}
 	}
 
-	// Per-run artifact dir: steps write to /artifacts/, we collect after run
+	// Per-run artifact dir: steps write to /artifacts/, we collect after run.
+	// Skip adding the auto-mount if the job already declares an extra-bind for /artifacts.
 	artifactDir := filepath.Join(r.cacheDir, "artifacts", info.RunID)
 	_ = os.MkdirAll(artifactDir, 0o755)
-	extraBinds = append(extraBinds,
-		BindMount{HostPath: artifactDir, ContainerPath: "/artifacts"},
-	)
+	hasArtifactBind := false
+	for _, b := range job.ExtraBinds {
+		if b.Container == "/artifacts" {
+			hasArtifactBind = true
+			artifactDir = b.Host // collect from the job-declared path instead
+			break
+		}
+	}
+	if !hasArtifactBind {
+		extraBinds = append(extraBinds,
+			BindMount{HostPath: artifactDir, ContainerPath: "/artifacts"},
+		)
+	}
 
 	// Build named volumes from job.Volumes
 	var namedVolumes []NamedVolumeMount
